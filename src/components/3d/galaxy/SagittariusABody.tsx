@@ -29,13 +29,19 @@ export const SagittariusABody: React.FC<SagittariusABodyProps> = ({
 
   return (
     <group position={position} scale={[scale, scale, scale]} onClick={onClick}>
-      {/* 1. Event Horizon Black Sphere (absorbs 100% light) */}
+      {/* 1. Event Horizon Black Sphere: Rs = 2GM/c^2 = 0.127 AU (scaled to 1.27 units) */}
       <mesh>
-        <sphereGeometry args={[2.0, 64, 64]} />
+        <sphereGeometry args={[1.27, 64, 64]} />
         <meshBasicMaterial color="#000000" />
       </mesh>
 
-      {/* 2. Gravitational Lensing / Photon Sphere Halo */}
+      {/* 2. Photon Sphere (R_ph = 1.5 * Rs = 0.19 AU / 1.9 units) - Pure Relativistic Light Trap */}
+      <mesh>
+        <sphereGeometry args={[1.90, 48, 48]} />
+        <meshBasicMaterial color="#ffbb44" wireframe transparent opacity={0.15} />
+      </mesh>
+
+      {/* 3. Gravitational Lensing / Photon Ring Halo */}
       <mesh>
         <planeGeometry args={[14.0, 14.0]} />
         <shaderMaterial

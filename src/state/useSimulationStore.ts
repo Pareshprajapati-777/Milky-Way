@@ -28,6 +28,7 @@ export interface SimulationStore {
   showGravityGrid: boolean;
   showLagrangePoints: boolean;
   showMagnetosphere: boolean;
+  showHohmannTransfer: boolean;
 
   // Transition state
   transitionProgress: TransitionProgress | null;
@@ -52,6 +53,7 @@ export interface SimulationStore {
   toggleGravityGrid: () => void;
   toggleLagrangePoints: () => void;
   toggleMagnetosphere: () => void;
+  toggleHohmannTransfer: () => void;
   setTransitionProgress: (progress: number | null) => void;
   resetToGalacticView: () => void;
   focusSolarSystem: () => void;
@@ -79,6 +81,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   showGravityGrid: false,
   showLagrangePoints: false,
   showMagnetosphere: false,
+  showHohmannTransfer: false,
 
   transitionProgress: null,
 
@@ -105,6 +108,7 @@ export const useSimulationStore = create<SimulationStore>((set) => ({
   toggleGravityGrid: () => set((state) => ({ showGravityGrid: !state.showGravityGrid })),
   toggleLagrangePoints: () => set((state) => ({ showLagrangePoints: !state.showLagrangePoints })),
   toggleMagnetosphere: () => set((state) => ({ showMagnetosphere: !state.showMagnetosphere })),
+  toggleHohmannTransfer: () => set((state) => ({ showHohmannTransfer: !state.showHohmannTransfer })),
 
   setTransitionProgress: (progress) => {
     if (progress === null) {

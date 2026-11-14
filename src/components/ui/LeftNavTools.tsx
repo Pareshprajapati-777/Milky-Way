@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   RotateCcw,
   Sparkles,
@@ -10,10 +10,15 @@ import {
   ShieldCheck,
   Maximize2,
   Tag,
-  Compass
+  Compass,
+  Grid,
+  Radio,
+  Zap,
+  Send
 } from 'lucide-react';
 import { ScaleMode } from '../../utils/astronomicalUnits';
 import { soundEngine } from '../../utils/soundEngine';
+import { useSimulationStore } from '../../state/useSimulationStore';
 
 interface LeftNavToolsProps {
   scaleMode: ScaleMode;
@@ -209,6 +214,81 @@ export const LeftNavTools: React.FC<LeftNavToolsProps> = ({
           <Sparkles className="w-4 h-4" />
           <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-space-900 border border-white/15 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity shadow-lg">
             Cinematic Orbit Tour: {isCinematicTour ? 'ACTIVE' : 'OFF'}
+          </span>
+        </button>
+
+        <div className="h-px bg-white/10 my-0.5" />
+
+        {/* 9. PHYSICS LAYERS (Scientific Overlays) */}
+        {/* A. 3D Gravitational Potential Spacetime Fabric */}
+        <button
+          onClick={() => {
+            soundEngine.playUiClick();
+            useSimulationStore.getState().toggleGravityGrid();
+          }}
+          onMouseEnter={() => soundEngine.playUiHover()}
+          className={`group relative p-2.5 rounded-xl transition-all ${
+            useSimulationStore((state) => state.showGravityGrid) ? 'text-cyber-cyan bg-cyan-950/60 border border-cyber-cyan/40 shadow-neon-cyan' : 'text-gray-500 hover:text-gray-300'
+          }`}
+          title="Toggle 3D Spacetime Curvature Fabric (-GM/r)"
+        >
+          <Grid className="w-4 h-4" />
+          <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-space-900 border border-white/15 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity shadow-lg">
+            Spacetime Gravity Grid: {useSimulationStore((state) => state.showGravityGrid) ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        {/* B. Lagrange Points & JWST Marker */}
+        <button
+          onClick={() => {
+            soundEngine.playUiClick();
+            useSimulationStore.getState().toggleLagrangePoints();
+          }}
+          onMouseEnter={() => soundEngine.playUiHover()}
+          className={`group relative p-2.5 rounded-xl transition-all ${
+            useSimulationStore((state) => state.showLagrangePoints) ? 'text-amber-300 bg-amber-950/60 border border-amber-400/40' : 'text-gray-500 hover:text-gray-300'
+          }`}
+          title="Toggle L1-L5 Lagrange Equilibrium Points & JWST"
+        >
+          <Radio className="w-4 h-4" />
+          <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-space-900 border border-white/15 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity shadow-lg">
+            Lagrange Points (L1-L5 + JWST): {useSimulationStore((state) => state.showLagrangePoints) ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        {/* C. Magnetosphere & Solar Wind Vectors */}
+        <button
+          onClick={() => {
+            soundEngine.playUiClick();
+            useSimulationStore.getState().toggleMagnetosphere();
+          }}
+          onMouseEnter={() => soundEngine.playUiHover()}
+          className={`group relative p-2.5 rounded-xl transition-all ${
+            useSimulationStore((state) => state.showMagnetosphere) ? 'text-sky-400 bg-sky-950/60 border border-sky-400/40' : 'text-gray-500 hover:text-gray-300'
+          }`}
+          title="Toggle Magnetosphere & Parker Solar Wind Vectors"
+        >
+          <Zap className="w-4 h-4" />
+          <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-space-900 border border-white/15 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity shadow-lg">
+            Magnetosphere & Solar Wind: {useSimulationStore((state) => state.showMagnetosphere) ? 'ON' : 'OFF'}
+          </span>
+        </button>
+
+        {/* D. Hohmann Transfer Orbit Trajectory */}
+        <button
+          onClick={() => {
+            soundEngine.playUiClick();
+            useSimulationStore.getState().toggleHohmannTransfer();
+          }}
+          onMouseEnter={() => soundEngine.playUiHover()}
+          className={`group relative p-2.5 rounded-xl transition-all ${
+            useSimulationStore((state) => state.showHohmannTransfer) ? 'text-red-400 bg-red-950/60 border border-red-500/40' : 'text-gray-500 hover:text-gray-300'
+          }`}
+          title="Toggle Hohmann Transfer Trajectory (Earth ➔ Mars Δv)"
+        >
+          <Send className="w-4 h-4" />
+          <span className="absolute left-full ml-3 px-2 py-1 rounded-md bg-space-900 border border-white/15 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity shadow-lg">
+            Hohmann Transfer (Earth➔Mars): {useSimulationStore((state) => state.showHohmannTransfer) ? 'ON' : 'OFF'}
           </span>
         </button>
 

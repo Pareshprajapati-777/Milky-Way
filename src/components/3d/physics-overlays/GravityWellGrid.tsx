@@ -1,20 +1,32 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 
+interface MassSource {
+  x: number;
+  z: number;
+  massWeight: number; // proportional to GM
+}
+
 interface GravityWellGridProps {
   gridSize?: number;
   divisions?: number;
-  depthScale?: number;
+  masses?: MassSource[];
 }
 
 /**
- * 3D Curved Spacetime Wireframe (General Relativity Gravity Well Visualization)
- * Visualizes the curvature of spacetime around the Sun / massive bodies
+ * Gravitational Potential Well Grid (3D Spacetime Fabric)
+ * Deformable wireframe representing curvature of spacetime bending proportionally to:
+ * Φ(x, z) ∝ -Σ (GM_i / r_i)
+ * for Sun, Jupiter, Earth, and Sagittarius A*
  */
 export const GravityWellGrid: React.FC<GravityWellGridProps> = ({
-  gridSize = 60,
-  divisions = 60,
-  depthScale = 4.0
+  gridSize = 120,
+  divisions = 80,
+  masses = [
+    { x: 0, z: 0, massWeight: 18.0 },      // The Sun (or Sgr A* in galactic frame)
+    { x: 30, z: 20, massWeight: 3.5 },     // Jupiter well
+    { x: 18, z: 0, massWeight: 1.2 }       // Earth well
+  ]
 }) => {
   const geometry = useMemo(() => {
     const geom = new THREE.PlaneGeometry(gridSize, gridSize, divisions, divisions);
@@ -24,23 +36,30 @@ export const GravityWellGrid: React.FC<GravityWellGridProps> = ({
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const z = pos.getZ(i);
-      const r = Math.sqrt(x * x + z * z);
-      // Schwarzschild curvature funnel: z ~ -1 / (r + c)
-      const dip = -depthScale / (r * 0.4 + 1.2);
-      pos.setY(i, dip);
+
+      let totalPotential = 0;
+      for (const m of masses) {
+        const dx = x - m.x;
+        const dz = z - m.z;
+        const r = Math.sqrt(dx * dx + dz * dz);
+        // Potential ~ -GM / (r + softening)
+        totalPotential -= m.massWeight / (r * 0.45 + 1.2);
+      }
+
+      pos.setY(i, Math.max(-12.0, totalPotential));
     }
     geom.computeVertexNormals();
     return geom;
-  }, [gridSize, divisions, depthScale]);
+  }, [gridSize, divisions, masses]);
 
   return (
-    <group position={[0, -0.5, 0]}>
+    <group position={[0, -0.6, 0]}>
       <mesh geometry={geometry}>
         <meshBasicMaterial
-          color="#00ddff"
+          color="#00F5D4"
           wireframe
           transparent
-          opacity={0.22}
+          opacity={0.28}
         />
       </mesh>
     </group>

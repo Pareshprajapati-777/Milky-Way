@@ -9,6 +9,7 @@ import { ScaleMode, auToVisualDistance } from '../../../utils/astronomicalUnits'
 import { GravityWellGrid } from '../physics-overlays/GravityWellGrid';
 import { LagrangeMarkers } from '../physics-overlays/LagrangeMarkers';
 import { Magnetosphere } from '../physics-overlays/Magnetosphere';
+import { HohmannTransferOrbit } from '../physics-overlays/HohmannTransferOrbit';
 import { useSimulationStore } from '../../../state/useSimulationStore';
 
 interface SolarSystemProps {
@@ -113,9 +114,10 @@ export const SolarSystem: React.FC<SolarSystemProps> = ({
       />
 
       {/* Physics Overlays */}
-      {useSimulationStore.getState().showGravityGrid && <GravityWellGrid />}
-      {useSimulationStore.getState().showLagrangePoints && <LagrangeMarkers />}
-      {useSimulationStore.getState().showMagnetosphere && <Magnetosphere />}
+      {useSimulationStore((state) => state.showGravityGrid) && <GravityWellGrid />}
+      {useSimulationStore((state) => state.showLagrangePoints) && <LagrangeMarkers />}
+      {useSimulationStore((state) => state.showMagnetosphere) && <Magnetosphere />}
+      {useSimulationStore((state) => state.showHohmannTransfer) && <HohmannTransferOrbit fromPlanetId="earth" toPlanetId="mars" />}
 
       {/* 6. All 9 Planets with Moons (Completely preserving existing textures, shaders, atmosphere) */}
       {planetsList.map((planet) => (

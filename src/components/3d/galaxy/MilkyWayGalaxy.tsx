@@ -48,22 +48,31 @@ const COLOR = {
 };
 
 // ============================================================
-// SIX ARM ASYMMETRIC STRUCTURE
+// 4-ARM LOGARITHMIC SPIRAL EQUATIONS + ORION-CYGNUS SPUR
+// r(theta) = a * exp(b * theta)
+// Density Wave Theory (Lin & Shu 1964) with Dark Matter Halo
 // ============================================================
 const ARMS = [
-  // ARM 1 - DOMINANT
-  { phase: 0.12, strength: 1.00, width: 1.00, offset: 0.00 },
-  // ARM 2 - DOMINANT
-  { phase: Math.PI / 3 + 0.18, strength: 0.94, width: 1.04, offset: 0.25 },
-  // ARM 3 - MEDIUM
-  { phase: (Math.PI * 2) / 3 - 0.12, strength: 0.72, width: 0.90, offset: -0.25 },
-  // ARM 4 - MEDIUM
-  { phase: Math.PI + 0.08, strength: 0.70, width: 0.92, offset: 0.30 },
-  // ARM 5 - WEAK
-  { phase: (Math.PI * 4) / 3 - 0.17, strength: 0.48, width: 0.78, offset: -0.40 },
-  // ARM 6 - WEAK
-  { phase: (Math.PI * 5) / 3 + 0.10, strength: 0.44, width: 0.76, offset: 0.48 }
+  // 1. Perseus Arm (Major outer spiral)
+  { name: 'Perseus', phase: 0.15, strength: 1.00, width: 1.05, offset: 0.00, b: 0.235 },
+  // 2. Scutum-Centaurus Arm (Major inner spiral)
+  { name: 'Scutum-Centaurus', phase: Math.PI / 2 + 0.18, strength: 0.98, width: 1.02, offset: 0.15, b: 0.235 },
+  // 3. Sagittarius Arm (Dense molecular cloud arm)
+  { name: 'Sagittarius', phase: Math.PI + 0.08, strength: 0.88, width: 0.92, offset: 0.10, b: 0.235 },
+  // 4. Norma-Outer Arm (Distant galactic edge arm)
+  { name: 'Norma', phase: (Math.PI * 3) / 2 + 0.12, strength: 0.82, width: 0.90, offset: -0.15, b: 0.235 },
+  // 5. Orion-Cygnus Spur (Local spur hosting our Solar System)
+  { name: 'Orion-Cygnus Spur', phase: 0.65, strength: 0.75, width: 0.65, offset: 0.25, b: 0.210 }
 ];
+
+/**
+ * Flat Galactic Rotation Curve (Dark Matter Halo Effect)
+ * v(r) = v0 * tanh(r / r_core)
+ * where v0 ≈ 220 km/s and r_core ≈ 2.0 kpc (~6.5 visual units)
+ */
+export function getGalacticRotationVelocity(radius: number, v0 = 220.0, rCore = 6.5): number {
+  return v0 * Math.tanh(radius / rCore);
+}
 
 function angularDifference(a: number, b: number) {
   let d = Math.abs(a - b);
