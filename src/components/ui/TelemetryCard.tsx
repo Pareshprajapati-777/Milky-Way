@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CelestialBodyData, MoonData, CELESTIAL_BODIES } from '../../data/astronomy';
 import { soundEngine } from '../../utils/soundEngine';
 import {
@@ -41,12 +41,47 @@ export const TelemetryCard: React.FC<TelemetryCardProps> = ({
   onZoomOutToSolar,
   simTimeRef
 }) => {
-  const currentSimDays = simTimeRef ? simTimeRef.current : 0;
-  const orbitState = body.id !== 'sun' ? calculateKeplerianOrbit(body, currentSimDays) : null;
   const [activeTab, setActiveTab] = useState<'physical' | 'atmosphere' | 'orbit' | 'moons' | 'missions'>('physical');
   const [tempUnit, setTempUnit] = useState<'C' | 'K' | 'F'>('C');
   const [showCinematicVideo, setShowCinematicVideo] = useState<boolean>(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
+
+  // Direct DOM Ref Mutators for 60FPS Zero-Rerender Telemetry updates (throttled at 10Hz/100ms)
+  const distAuRef = useRef<HTMLSpanElement>(null);
+  const distKmRef = useRef<HTMLSpanElement>(null);
+  const velKpsRef = useRef<HTMLSpanElement>(null);
+  const velKmhRef = useRef<HTMLSpanElement>(null);
+  const anomalyRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (body.id === 'sun') return;
+
+    const interval = setInterval(() => {
+      const currentSimDays = simTimeRef ? simTimeRef.current : 0;
+      const state = calculateKeplerianOrbit(body, currentSimDays);
+
+      if (distAuRef.current) {
+        distAuRef.current.innerText = `${state.rAU.toFixed(3)} AU`;
+      }
+      if (distKmRef.current) {
+        distKmRef.current.innerText = `${state.distanceMillionKm.toFixed(1)}M km (Current)`;
+      }
+      if (velKpsRef.current) {
+        velKpsRef.current.innerText = `${state.velocityKps.toFixed(2)} km/s`;
+      }
+      if (velKmhRef.current) {
+        velKmhRef.current.innerText = `${(state.velocityKps * 3600).toFixed(0)} km/h`;
+      }
+      if (anomalyRef.current) {
+        anomalyRef.current.innerText = `Anomaly ν: ${state.trueAnomalyDeg.toFixed(1)}°`;
+      }
+    }, 100); // 10Hz / 100ms smooth throttle
+
+    return () => clearInterval(interval);
+  }, [body.id, simTimeRef]);
+
+  // Initial calculation fallback
+  const initialOrbitState = body.id !== 'sun' && simTimeRef ? calculateKeplerianOrbit(body, simTimeRef.current) : null;
 
   // Helper to convert temperatures
   const formatTemp = (tempC: number) => {
@@ -521,11 +556,11 @@ export const TelemetryCard: React.FC<TelemetryCardProps> = ({
                   <span className="text-[10px] text-gray-400 block font-mono uppercase tracking-wider mb-0.5">
                     DISTANCE FROM SUN
                   </span>
-                  <span className="font-tech text-base font-bold text-white">
-                    {orbitState ? orbitState.rAU.toFixed(3) : body.distanceFromSunAU} <span className="text-xs font-normal text-gray-400">AU</span>
+                  <span ref={distAuRef} className="font-tech text-base font-bold text-white">
+                    {initialOrbitState ? `${initialOrbitState.rAU.toFixed(3)} AU` : `${body.distanceFromSunAU} AU`}
                   </span>
-                  <span className="text-[9px] text-gray-400 block font-mono mt-0.5">
-                    {orbitState ? `${orbitState.distanceMillionKm.toFixed(1)}M km (Current)` : `${body.distanceFromSunMillionKm} Million km`}
+                  <span ref={distKmRef} className="text-[9px] text-gray-400 block font-mono mt-0.5">
+                    {initialOrbitState ? `${initialOrbitState.distanceMillionKm.toFixed(1)}M km (Current)` : `${body.distanceFromSunMillionKm} Million km`}
                   </span>
                   <span className="text-[9px] text-cyan-300/80 block font-mono">
                     a: {body.distanceFromSunAU} AU • e: {body.eccentricity}
@@ -536,14 +571,14 @@ export const TelemetryCard: React.FC<TelemetryCardProps> = ({
                   <span className="text-[10px] text-gray-400 block font-mono uppercase tracking-wider mb-0.5">
                     ORBITAL VELOCITY
                   </span>
-                  <span className="font-tech text-base font-bold text-cyber-cyan">
-                    {orbitState ? orbitState.velocityKps.toFixed(2) : body.orbitalVelocityKps} <span className="text-xs font-normal text-gray-400">km/s</span>
+                  <span ref={velKpsRef} className="font-tech text-base font-bold text-cyber-cyan">
+                    {initialOrbitState ? `${initialOrbitState.velocityKps.toFixed(2)} km/s` : `${body.orbitalVelocityKps} km/s`}
                   </span>
-                  <span className="text-[9px] text-gray-400 block font-mono mt-0.5">
-                    {orbitState ? `${(orbitState.velocityKps * 3600).toFixed(0)} km/h` : `${(body.orbitalVelocityKps * 3600).toLocaleString()} km/h`}
+                  <span ref={velKmhRef} className="text-[9px] text-gray-400 block font-mono mt-0.5">
+                    {initialOrbitState ? `${(initialOrbitState.velocityKps * 3600).toFixed(0)} km/h` : `${(body.orbitalVelocityKps * 3600).toLocaleString()} km/h`}
                   </span>
-                  <span className="text-[9px] text-emerald-400/80 block font-mono">
-                    {orbitState ? `Anomaly ν: ${orbitState.trueAnomalyDeg.toFixed(1)}°` : `Mean: ${body.orbitalVelocityKps} km/s`}
+                  <span ref={anomalyRef} className="text-[9px] text-emerald-400/80 block font-mono">
+                    {initialOrbitState ? `Anomaly ν: ${initialOrbitState.trueAnomalyDeg.toFixed(1)}°` : `Mean: ${body.orbitalVelocityKps} km/s`}
                   </span>
                 </div>
 
