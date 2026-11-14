@@ -1,16 +1,19 @@
-/**
- * ============================================================================
- * SIMULATION STATE MACHINE & NAVIGATION STORE
- * ============================================================================
- * Explicit state machine to prevent animation race conditions, camera fighting,
- * and broken transition states during multi-scale exploration.
- * ============================================================================
- */
-
+import { create } from 'zustand';
+import { SimulationScale } from '../core/ScaleManager';
 import { ScaleMode } from '../utils/astronomicalUnits';
 import { CelestialBodyData, MoonData } from '../data/astronomy';
 
-export type SimulationState =
+export interface PhysicsOverlays {
+  showOrbits: boolean;
+  showGravityWell: boolean;
+  showLagrangePoints: boolean;
+  showMagnetosphere: boolean;
+  showHabitableZone: boolean;
+  showGalacticArmsLabels: boolean;
+  realisticScaleProportions: boolean; // Toggle between True 1:1 Scale vs Visual Enlarged Scale
+}
+
+export type SimulationStateMode =
   | 'GALAXY'
   | 'TRANSITION_TO_SOLAR'
   | 'SOLAR_SYSTEM'
@@ -47,19 +50,62 @@ export function getTransitionScaleLabel(t: number): string {
   return '1 AU (Terrestrial Planetary Realm)';
 }
 
-export interface SimulationStoreState {
-  currentState: SimulationState;
-  scaleMode: ScaleMode;
-  selectedBody: CelestialBodyData | null;
-  selectedMoon: MoonData | null;
-  timeScale: number;
+export interface SimulationState {
+  currentScale: SimulationScale;
+  selectedBodyId: string; // 'milky-way' | 'sgr-a' | 'sun' | 'earth' | 'saturn' ...
+  julianDate: number;
+  timeSpeedMultiplier: number; // 1 = real-time, 86400 = 1 day/sec
   isPaused: boolean;
-  activeLOD: 'HIGH' | 'MEDIUM' | 'LOW';
-  showOrbits: boolean;
-  showMoons: boolean;
-  showAsteroids: boolean;
-  showLabels: boolean;
-  showHabitableZone: boolean;
-  showScientificDebug: boolean;
-  showDisclosureModal: boolean;
+  overlays: PhysicsOverlays;
+
+  // Actions
+  selectBody: (id: string, targetScale?: SimulationScale) => void;
+  setTimeSpeed: (speed: number) => void;
+  togglePause: () => void;
+  toggleOverlay: (key: keyof PhysicsOverlays) => void;
+  advanceTime: (deltaSeconds: number) => void;
 }
+
+export const useSimulationStore = create<SimulationState>((set) => ({
+  currentScale: 'GALACTIC',
+  selectedBodyId: 'milky-way',
+  julianDate: 2461359.5, // Nov 2026 Epoch
+  timeSpeedMultiplier: 3600, // 1 hour per second default
+  isPaused: false,
+  overlays: {
+    showOrbits: true,
+    showGravityWell: false,
+    showLagrangePoints: false,
+    showMagnetosphere: false,
+    showHabitableZone: false,
+    showGalacticArmsLabels: true,
+    realisticScaleProportions: false,
+  },
+
+  selectBody: (id, targetScale) =>
+    set((state) => ({
+      selectedBodyId: id,
+      currentScale:
+        targetScale ??
+        (id === 'milky-way'
+          ? 'GALACTIC'
+          : id === 'sgr-a'
+          ? 'BLACK_HOLE'
+          : id === 'sun'
+          ? 'SOLAR_SYSTEM'
+          : 'PLANETARY'),
+    })),
+
+  setTimeSpeed: (speed) => set({ timeSpeedMultiplier: speed }),
+  togglePause: () => set((state) => ({ isPaused: !state.isPaused })),
+  toggleOverlay: (key) =>
+    set((state) => ({
+      overlays: { ...state.overlays, [key]: !state.overlays[key] },
+    })),
+  advanceTime: (deltaSeconds) =>
+    set((state) => {
+      if (state.isPaused) return state;
+      const deltaDays = (deltaSeconds * state.timeSpeedMultiplier) / 86400;
+      return { julianDate: state.julianDate + deltaDays };
+    }),
+}));

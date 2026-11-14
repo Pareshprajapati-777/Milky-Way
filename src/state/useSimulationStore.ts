@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { ScaleMode } from '../utils/astronomicalUnits';
 import { CelestialBodyData, MoonData } from '../data/astronomy';
-import { SimulationState, CameraProfile, TransitionProgress, getTransitionPhase, getTransitionScaleLabel } from './simulationMachine';
+import { SimulationStateMode, CameraProfile, TransitionProgress, getTransitionPhase, getTransitionScaleLabel, PhysicsOverlays } from './simulationMachine';
 
 export interface SimulationStore {
   // Navigation & Scale states
-  currentState: SimulationState;
+  currentState: SimulationStateMode;
   scaleMode: ScaleMode;
   cameraProfile: CameraProfile;
   selectedBody: CelestialBodyData | null;
@@ -34,7 +34,7 @@ export interface SimulationStore {
   transitionProgress: TransitionProgress | null;
 
   // Actions
-  setState: (state: SimulationState) => void;
+  setState: (state: SimulationStateMode) => void;
   setScaleMode: (mode: ScaleMode) => void;
   setSelectedBody: (body: CelestialBodyData | null) => void;
   setSelectedMoon: (moon: MoonData | null) => void;
