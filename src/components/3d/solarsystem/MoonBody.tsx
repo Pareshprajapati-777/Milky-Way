@@ -2,11 +2,11 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { MoonData } from '../../data/astronomy';
-import { getSpecializedMoonTexture } from '../../utils/proceduralTextures';
-import { getRealisticMoonTexture, getRealisticMoonElevationTexture } from '../../utils/realisticTextures';
-import { soundEngine } from '../../utils/soundEngine';
-import { getMoonRelativePosition } from '../../utils/orbitalPhysics';
+import { MoonData } from '../../../data/astronomy';
+import { getSpecializedMoonTexture } from '../../../utils/proceduralTextures';
+import { getRealisticMoonTexture, getRealisticMoonElevationTexture } from '../../../utils/realisticTextures';
+import { soundEngine } from '../../../utils/soundEngine';
+import { getMoonRelativePosition } from '../../../utils/orbitalPhysics';
 
 interface MoonBodyProps {
   moonData: MoonData;

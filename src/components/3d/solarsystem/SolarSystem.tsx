@@ -1,11 +1,15 @@
 import React from 'react';
 import * as THREE from 'three';
-import { CELESTIAL_BODIES, CELESTIAL_ORDER, CelestialBodyData, MoonData } from '../../data/astronomy';
+import { CELESTIAL_BODIES, CELESTIAL_ORDER, CelestialBodyData, MoonData } from '../../../data/astronomy';
 import { SunBody } from './SunBody';
 import { PlanetBody } from './PlanetBody';
 import { OrbitPath } from './OrbitPath';
 import { AsteroidBelt } from './AsteroidBelt';
-import { ScaleMode, auToVisualDistance } from '../../utils/astronomicalUnits';
+import { ScaleMode, auToVisualDistance } from '../../../utils/astronomicalUnits';
+import { GravityWellGrid } from '../physics-overlays/GravityWellGrid';
+import { LagrangeMarkers } from '../physics-overlays/LagrangeMarkers';
+import { Magnetosphere } from '../physics-overlays/Magnetosphere';
+import { useSimulationStore } from '../../../state/useSimulationStore';
 
 interface SolarSystemProps {
   timeScale: number;
@@ -103,6 +107,11 @@ export const SolarSystem: React.FC<SolarSystemProps> = ({
         timeScale={timeScale}
         visible={showAsteroids}
       />
+
+      {/* Physics Overlays */}
+      {useSimulationStore.getState().showGravityGrid && <GravityWellGrid />}
+      {useSimulationStore.getState().showLagrangePoints && <LagrangeMarkers />}
+      {useSimulationStore.getState().showMagnetosphere && <Magnetosphere />}
 
       {/* 6. All 9 Planets with Moons (Completely preserving existing textures, shaders, atmosphere) */}
       {planetsList.map((planet) => (

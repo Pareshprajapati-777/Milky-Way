@@ -1,11 +1,11 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { getRealisticSunTexture } from '../../utils/realisticTextures';
-import { SunShader, SunCoronaShader } from '../../utils/RealisticShaders';
-import { CELESTIAL_BODIES } from '../../data/astronomy';
-import { soundEngine } from '../../utils/soundEngine';
-import { ScaleMode, ASTRO_CONSTANTS } from '../../utils/astronomicalUnits';
+import { getRealisticSunTexture } from '../../../utils/realisticTextures';
+import { SunSurfaceShader, SunCoronalFlareShader } from '../../../shaders/sun/sunShaders';
+import { CELESTIAL_BODIES } from '../../../data/astronomy';
+import { soundEngine } from '../../../utils/soundEngine';
+import { ScaleMode, ASTRO_CONSTANTS } from '../../../utils/astronomicalUnits';
 
 interface SunBodyProps {
   onSelect: () => void;
@@ -44,8 +44,8 @@ export const SunBody: React.FC<SunBodyProps> = ({ onSelect, isSelected, timeScal
         uTexture: { value: sunTexture },
         uTime: { value: 0 }
       },
-      vertexShader: SunShader.vertexShader,
-      fragmentShader: SunShader.fragmentShader,
+      vertexShader: SunSurfaceShader.vertexShader,
+      fragmentShader: SunSurfaceShader.fragmentShader,
       side: THREE.FrontSide
     });
   }, [sunTexture]);
@@ -58,8 +58,8 @@ export const SunBody: React.FC<SunBodyProps> = ({ onSelect, isSelected, timeScal
         uAlpha: { value: 0.38 },
         uColor: { value: new THREE.Color(0xff6a12) }
       },
-      vertexShader: SunCoronaShader.vertexShader,
-      fragmentShader: SunCoronaShader.fragmentShader,
+      vertexShader: SunCoronalFlareShader.vertexShader,
+      fragmentShader: SunCoronalFlareShader.fragmentShader,
       transparent: true,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
@@ -75,8 +75,8 @@ export const SunBody: React.FC<SunBodyProps> = ({ onSelect, isSelected, timeScal
         uAlpha: { value: 0.20 },
         uColor: { value: new THREE.Color(0xff6a12) }
       },
-      vertexShader: SunCoronaShader.vertexShader,
-      fragmentShader: SunCoronaShader.fragmentShader,
+      vertexShader: SunCoronalFlareShader.vertexShader,
+      fragmentShader: SunCoronalFlareShader.fragmentShader,
       transparent: true,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,
@@ -92,8 +92,8 @@ export const SunBody: React.FC<SunBodyProps> = ({ onSelect, isSelected, timeScal
         uAlpha: { value: 0.075 },
         uColor: { value: new THREE.Color(0xff6a12) }
       },
-      vertexShader: SunCoronaShader.vertexShader,
-      fragmentShader: SunCoronaShader.fragmentShader,
+      vertexShader: SunCoronalFlareShader.vertexShader,
+      fragmentShader: SunCoronalFlareShader.fragmentShader,
       transparent: true,
       side: THREE.BackSide,
       blending: THREE.AdditiveBlending,

@@ -1,8 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { MilkyWayGalaxy } from './MilkyWayGalaxy';
-import { SolarSystem } from './SolarSystem';
+import { MilkyWayGalaxy } from './galaxy/MilkyWayGalaxy';
+import { SolarSystem } from './solarsystem/SolarSystem';
 import { CameraController, ViewMode } from './CameraController';
 import { WarpTunnel } from './WarpTunnel';
 import { GalaxyPostProcessing } from './GalaxyPostProcessing';

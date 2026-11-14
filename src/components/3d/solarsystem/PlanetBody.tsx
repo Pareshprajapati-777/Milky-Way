@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { CelestialBodyData, MoonData } from '../../data/astronomy';
+import { CelestialBodyData, MoonData } from '../../../data/astronomy';
 import {
   getRealisticEarthDayTexture,
   getRealisticEarthNightTexture,
@@ -18,12 +18,12 @@ import {
   getRealisticUranusTexture,
   getRealisticNeptuneTexture,
   getRealisticPlutoTexture
-} from '../../utils/realisticTextures';
-import { EarthShader, AtmosphereGlowShader } from '../../utils/RealisticShaders';
+} from '../../../utils/realisticTextures';
+import { EarthNightDayShader, RayleighAtmosphereShader } from '../../../shaders/planets/planetShaders';
 import { MoonBody } from './MoonBody';
-import { soundEngine } from '../../utils/soundEngine';
-import { getPlanet3DPosition, getPlanetAxialRotation } from '../../utils/orbitalPhysics';
-import { ScaleMode, ASTRO_CONSTANTS } from '../../utils/astronomicalUnits';
+import { soundEngine } from '../../../utils/soundEngine';
+import { getPlanet3DPosition, getPlanetAxialRotation } from '../../../utils/orbitalPhysics';
+import { ScaleMode, ASTRO_CONSTANTS } from '../../../utils/astronomicalUnits';
 
 interface PlanetBodyProps {
   planet: CelestialBodyData;
@@ -72,8 +72,8 @@ const SaturnLook: React.FC<{
       uniforms: {
         glowColor: { value: new THREE.Color(0xd8b979) }
       },
-      vertexShader: AtmosphereGlowShader.vertexShader,
-      fragmentShader: AtmosphereGlowShader.fragmentShader
+      vertexShader: RayleighAtmosphereShader.vertexShader,
+      fragmentShader: RayleighAtmosphereShader.fragmentShader
     });
   }, []);
 
@@ -221,8 +221,8 @@ const UranusLook: React.FC<{
       uniforms: {
         glowColor: { value: new THREE.Color(0x31585c) }
       },
-      vertexShader: AtmosphereGlowShader.vertexShader,
-      fragmentShader: AtmosphereGlowShader.fragmentShader
+      vertexShader: RayleighAtmosphereShader.vertexShader,
+      fragmentShader: RayleighAtmosphereShader.fragmentShader
     });
   }, []);
 
@@ -314,8 +314,8 @@ const NeptuneLook: React.FC<{
       uniforms: {
         glowColor: { value: new THREE.Color(0x164b9a) }
       },
-      vertexShader: AtmosphereGlowShader.vertexShader,
-      fragmentShader: AtmosphereGlowShader.fragmentShader
+      vertexShader: RayleighAtmosphereShader.vertexShader,
+      fragmentShader: RayleighAtmosphereShader.fragmentShader
     });
   }, []);
 
@@ -649,8 +649,8 @@ const EarthLook: React.FC<{
         uCityGlow: { value: 1.0 },
         uTime: { value: 0.0 }
       },
-      vertexShader: EarthShader.vertexShader,
-      fragmentShader: EarthShader.fragmentShader
+      vertexShader: EarthNightDayShader.vertexShader,
+      fragmentShader: EarthNightDayShader.fragmentShader
     });
   }, [dayMap, nightMap, normalMap]);
 

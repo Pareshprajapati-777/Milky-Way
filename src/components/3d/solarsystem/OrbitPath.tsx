@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
-import { getPlanetOrbitLinePoints } from '../../utils/orbitalPhysics';
-import { ScaleMode } from '../../utils/astronomicalUnits';
+import { getPlanetOrbitLinePoints } from '../../../utils/orbitalPhysics';
+import { ScaleMode } from '../../../utils/astronomicalUnits';
 
 interface OrbitPathProps {
   planetId: string;

@@ -1,8 +1,9 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { MILKY_WAY_DATA } from '../../data/astronomy';
-import { soundEngine } from '../../utils/soundEngine';
+import { MILKY_WAY_DATA } from '../../../data/astronomy';
+import { soundEngine } from '../../../utils/soundEngine';
+import { SagittariusABody } from './SagittariusABody';
 
 interface MilkyWayGalaxyProps {
   onWarpToSolarSystem: () => void;
@@ -831,6 +832,9 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
           </mesh>
 
         </group>
+
+        {/* Sagittarius A* (Supermassive Black Hole at the Galactic Core 0,0,0) */}
+        <SagittariusABody position={[0, 0, 0]} scale={0.7} />
       </group>
     </>
   );
