@@ -10,6 +10,7 @@ interface MilkyWayGalaxyProps {
   isHoveredOverSun: boolean;
   setIsHoveredOverSun: (hovered: boolean) => void;
   visible: boolean;
+  opacity?: number;
 }
 
 // ============================================================
@@ -158,7 +159,8 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
   onWarpToSolarSystem,
   isHoveredOverSun,
   setIsHoveredOverSun,
-  visible
+  visible,
+  opacity = 1.0
 }) => {
   const galaxyGroupRef = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.Mesh>(null);
@@ -684,16 +686,17 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     setPulseScale(1.0 + Math.sin(time * 4.0) * 0.25);
   });
 
-  if (!visible) return null;
+  if (!visible || opacity <= 0.001) return null;
 
   return (
-    <>
+    <group>
       {/* 45,000 Background Stars on Celestial Sphere */}
       <primitive object={new THREE.Points(backgroundStarsGeometry, backgroundStarsMaterial)} />
 
       {/* Main Galactic Body tilted with exact angles from milky_way.html: x=8deg, z=-6deg */}
       <group
         ref={galaxyGroupRef}
+        scale={[opacity, opacity, opacity]}
         rotation={[
           THREE.MathUtils.degToRad(8),
           0,
@@ -836,6 +839,6 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
         {/* Sagittarius A* (Supermassive Black Hole at the Galactic Core 0,0,0) */}
         <SagittariusABody position={[0, 0, 0]} scale={0.7} />
       </group>
-    </>
+    </group>
   );
 };

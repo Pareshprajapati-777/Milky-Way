@@ -141,6 +141,31 @@ export const SimulationScene: React.FC<SimulationSceneProps> = ({
 
   const isWarping = viewMode === 'warp_to_solar' || viewMode === 'warp_to_galaxy';
 
+  // Continuous Exponential Scale & Opacity Calculations:
+  // When warping to solar: transitionProgress goes 0 -> 1
+  // Galaxy fades out as camera penetrates into Orion Arm (1.0 -> 0.0)
+  // Solar system scales up smoothly into view (0.001 -> 1.0)
+  const isGalacticOrTransit = viewMode === 'galaxy' || viewMode === 'warp_to_solar' || viewMode === 'warp_to_galaxy';
+  
+  let galaxyOpacity = 1.0;
+  let solarScale = 1.0;
+
+  if (viewMode === 'galaxy') {
+    galaxyOpacity = 1.0;
+    solarScale = 0.0;
+  } else if (viewMode === 'warp_to_solar') {
+    // Exponential ease out: galaxy fades as user zooms in deep
+    galaxyOpacity = Math.max(0.0, 1.0 - Math.pow(transitionProgress, 1.5));
+    // Solar system expands exponentially from micro-point to full size
+    solarScale = Math.min(1.0, Math.pow(transitionProgress, 2.0));
+  } else if (viewMode === 'warp_to_galaxy') {
+    galaxyOpacity = Math.min(1.0, Math.pow(transitionProgress, 0.7));
+    solarScale = Math.max(0.0, 1.0 - Math.pow(transitionProgress, 1.8));
+  } else {
+    galaxyOpacity = 0.0;
+    solarScale = 1.0;
+  }
+
   useFrame((_, delta) => {
     if (timeScale > 0) {
       activeSimTimeRef.current += delta * timeScale * BASE_SIM_DAYS_PER_SECOND;
@@ -178,17 +203,19 @@ export const SimulationScene: React.FC<SimulationSceneProps> = ({
       {/* Relativistic Warp Flight Streaks */}
       <WarpTunnel active={isWarping} progress={transitionProgress} />
 
-      {/* 3D Milky Way Galaxy View */}
+      {/* 3D Milky Way Galaxy View (with continuous opacity fading) */}
       <MilkyWayGalaxy
-        visible={viewMode === 'galaxy' || viewMode === 'warp_to_solar' || viewMode === 'warp_to_galaxy'}
+        visible={isGalacticOrTransit}
+        opacity={galaxyOpacity}
         onWarpToSolarSystem={handleWarpToSolar}
         isHoveredOverSun={isHoveredOverSun}
         setIsHoveredOverSun={setIsHoveredOverSun}
       />
 
-      {/* 3D Solar System View */}
+      {/* 3D Solar System View (with continuous exponential scale-in) */}
       <SolarSystem
         visible={viewMode !== 'galaxy'}
+        scale={solarScale}
         timeScale={timeScale}
         simTimeRef={activeSimTimeRef}
         selectedBodyId={selectedBody?.id || null}

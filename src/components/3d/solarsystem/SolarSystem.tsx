@@ -26,6 +26,8 @@ interface SolarSystemProps {
   showLabels: boolean;
   showHabitableZone: boolean;
   visible: boolean;
+  scale?: number;
+  position?: [number, number, number];
 }
 
 export const SolarSystem: React.FC<SolarSystemProps> = ({
@@ -42,9 +44,11 @@ export const SolarSystem: React.FC<SolarSystemProps> = ({
   showAsteroids,
   showLabels,
   showHabitableZone,
-  visible
+  visible,
+  scale = 1.0,
+  position = [0, 0, 0]
 }) => {
-  if (!visible) return null;
+  if (!visible || scale <= 0.001) return null;
 
   const planetsList = CELESTIAL_ORDER.filter(id => id !== 'sun').map(id => CELESTIAL_BODIES[id]);
 
@@ -53,7 +57,7 @@ export const SolarSystem: React.FC<SolarSystemProps> = ({
   const hzOuter = scaleMode === 'true_scale' ? 1.37 * 23481.0 : auToVisualDistance(1.37);
 
   return (
-    <group>
+    <group position={position} scale={[scale, scale, scale]}>
       {/* 1. The Sun (Central Yellow Dwarf Star & Primary Illuminator) */}
       <SunBody
         onSelect={() => onSelectBody(CELESTIAL_BODIES.sun)}

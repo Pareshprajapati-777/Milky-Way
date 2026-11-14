@@ -242,6 +242,7 @@ export function App() {
       <Canvas
         gl={{
           antialias: true,
+          logarithmicDepthBuffer: true,
           powerPreference: 'high-performance',
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.18,
