@@ -7,6 +7,7 @@ import {
   KM_PER_AU
 } from '../data/planetaryOrbits';
 import { auToVisualDistance, ASTRO_CONSTANTS, ScaleMode } from './astronomicalUnits';
+import { KeplerSolver, KeplerianElements } from '../core/KeplerSolver';
 
 /**
  * Standard simulated days elapsed per real second at 1x simulation speed.
@@ -24,6 +25,8 @@ export interface OrbitPhysicsState {
   eccentricAnomalyRad: number;
   eccentricAnomalyDeg: number;
   velocityKps: number;
+  velocityVectorKps: THREE.Vector3;
+  velocityAUPerDay: THREE.Vector3;
   positionAU: THREE.Vector3;
   direction: THREE.Vector3;
   semiMajorAxisAU: number;
@@ -40,44 +43,20 @@ export function getPlanetOrbitalElements(planetOrId: CelestialBodyData | string)
 }
 
 /**
- * Solve Kepler's Equation M = E - e*sin(E) for Eccentric Anomaly E
- * using high-precision Newton-Raphson iteration.
- * Converges to machine precision in 3-5 iterations.
+ * Solve Kepler's Equation M = E - e*sin(E) for Eccentric Anomaly E.
+ * Delegates directly to the authoritative KeplerSolver engine.
  */
 export function solveKeplerEquation(M: number, eccentricity: number): number {
-  // Normalize mean anomaly M to [0, 2π)
-  const TWO_PI = Math.PI * 2;
-  let mNorm = M % TWO_PI;
-  if (mNorm < 0) mNorm += TWO_PI;
-
-  // Initial estimate (improved for eccentric orbits)
-  let E: number;
-  if (eccentricity > 0.8) {
-    E = Math.PI;
-  } else {
-    E = mNorm + eccentricity * Math.sin(mNorm);
-  }
-
-  // Newton-Raphson iterations with tolerance 1e-11
-  for (let iter = 0; iter < 12; iter++) {
-    const f = E - eccentricity * Math.sin(E) - mNorm;
-    const fPrime = 1 - eccentricity * Math.cos(E);
-    const delta = f / fPrime;
-    E -= delta;
-    if (Math.abs(delta) < 1e-11) break;
-  }
-
-  return E;
+  return KeplerSolver.solveEccentricAnomaly(M, eccentricity);
 }
 
 /**
- * Compute the complete Keplerian state vector and physical orbital telemetry.
- * Origin: Sun center (0, 0, 0).
+ * Validates and extracts Keplerian parameters for a given celestial body input.
+ * Throws an explicit descriptive error instead of silently falling back to Earth.
  */
-export function calculateKeplerianOrbit(
-  planetOrId: CelestialBodyData | PlanetaryOrbitalElements | string,
-  simTimeDays: number
-): OrbitPhysicsState {
+export function resolvePlanetaryElements(
+  planetOrId: CelestialBodyData | PlanetaryOrbitalElements | string
+): PlanetaryOrbitalElements {
   let elem: PlanetaryOrbitalElements | null = null;
 
   if (typeof planetOrId === 'string') {
@@ -88,78 +67,80 @@ export function calculateKeplerianOrbit(
     elem = CENTRAL_PLANETARY_DATA[planetOrId.id.toLowerCase()] || null;
   }
 
-  // Fallback defaults for safety (Earth reference)
-  const a = elem?.semiMajorAxisAU ?? 1.0;
-  const e = elem?.eccentricity ?? 0.0167;
-  const periodDays = elem?.orbitalPeriodDays ?? 365.256;
-  const incRad = THREE.MathUtils.degToRad(elem?.inclinationDeg ?? 0);
-  const nodeRad = THREE.MathUtils.degToRad(elem?.longitudeAscendingNodeDeg ?? 0);
-  const periRad = THREE.MathUtils.degToRad(elem?.argumentOfPeriapsisDeg ?? 0);
-  const meanLongRad = THREE.MathUtils.degToRad(elem?.meanLongitudeDeg ?? 0);
+  if (!elem) {
+    const identifier = typeof planetOrId === 'string' ? planetOrId : (planetOrId as any)?.id ?? 'unknown';
+    throw new Error(
+      `[CelestialMechanicsError] Unknown celestial body identifier: "${identifier}". ` +
+      `No authoritative Keplerian ephemeris found in CENTRAL_PLANETARY_DATA.`
+    );
+  }
 
-  // 1. Mean motion in radians per simulated day
-  const n = (Math.PI * 2) / periodDays;
+  return elem;
+}
 
-  // 2. Mean anomaly at epoch J2000: M0 = L - Ω - ω
-  const m0 = meanLongRad - nodeRad - periRad;
-  const M = m0 + n * simTimeDays;
+/**
+ * Compute the complete Keplerian state vector and physical orbital telemetry.
+ * Origin: Sun center (0, 0, 0).
+ */
+export function calculateKeplerianOrbit(
+  planetOrId: CelestialBodyData | PlanetaryOrbitalElements | string,
+  simTimeDays: number
+): OrbitPhysicsState {
+  if (!Number.isFinite(simTimeDays)) {
+    throw new Error(`[CelestialMechanicsError] Invalid simulation time (simTimeDays=${simTimeDays}). Must be a finite number.`);
+  }
 
-  // 3. Solve for Eccentric Anomaly E
-  const E = solveKeplerEquation(M, e);
+  // Authoritative element resolution without silent fallback
+  const elem = resolvePlanetaryElements(planetOrId);
 
-  // 4. True Anomaly ν
-  const sinHalfE = Math.sin(E * 0.5);
-  const cosHalfE = Math.cos(E * 0.5);
-  const nu = 2 * Math.atan2(
-    Math.sqrt(1 + e) * sinHalfE,
-    Math.sqrt(1 - e) * cosHalfE
-  );
-  let nuNorm = nu % (Math.PI * 2);
-  if (nuNorm < 0) nuNorm += Math.PI * 2;
+  const a = elem.semiMajorAxisAU;
+  const e = elem.eccentricity;
+  const periodDays = elem.orbitalPeriodDays;
 
-  // 5. Heliocentric physical radius r (AU) via Kepler's 1st Law
-  const rAU = (a * (1 - e * e)) / (1 + e * Math.cos(nu));
+  // Compute mean anomaly at epoch J2000 from Mean Longitude:
+  // L = Ω + ω + M0  =>  M0 = L - Ω - ω
+  const meanLongRad = THREE.MathUtils.degToRad(elem.meanLongitudeDeg ?? 0);
+  const nodeRad = THREE.MathUtils.degToRad(elem.longitudeAscendingNodeDeg ?? 0);
+  const periRad = THREE.MathUtils.degToRad(elem.argumentOfPeriapsisDeg ?? 0);
+  const m0Rad = meanLongRad - nodeRad - periRad;
+
+  const keplerElements: KeplerianElements = {
+    semiMajorAxisAU: a,
+    eccentricity: e,
+    inclinationDeg: elem.inclinationDeg ?? 0,
+    longitudeAscendingNodeDeg: elem.longitudeAscendingNodeDeg ?? 0,
+    argumentOfPeriapsisDeg: elem.argumentOfPeriapsisDeg ?? 0,
+    meanAnomalyAtEpochDeg: THREE.MathUtils.radToDeg(m0Rad),
+    orbitalPeriodDays: periodDays
+  };
+
+  // Authoritative State Vector from KeplerSolver
+  const stateVector = KeplerSolver.computeHeliocentricPosition(keplerElements, simTimeDays);
+
+  const rAU = stateVector.heliocentricRadiusAU;
   const distanceKm = rAU * KM_PER_AU;
   const distanceMillionKm = distanceKm / 1e6;
 
-  // 6. Orbital velocity v (km/s) via Vis-Viva equation: v² = μ * (2/r - 1/a)
-  const aKm = a * KM_PER_AU;
-  const velocityKps = Math.sqrt(Math.max(0, MU_SUN_KM3_S2 * (2.0 / distanceKm - 1.0 / aKm)));
+  let nuNorm = stateVector.trueAnomalyRad % (Math.PI * 2);
+  if (nuNorm < 0) nuNorm += Math.PI * 2;
 
-  // 7. 3D Heliocentric coordinates in J2000 Ecliptic Frame
-  // Argument of latitude in orbital plane: θ = ν + ω
-  const theta = nu + periRad;
-
-  // Canonical transformation: R_y(Ω) * R_x(i) * R_y(ω) * [r*cos(ν), 0, r*sin(ν)]
-  // X = r * (cos(Ω)*cos(θ) - sin(Ω)*sin(θ)*cos(i))
-  // Y = r * (sin(θ)*sin(i))
-  // Z = r * (sin(Ω)*cos(θ) + cos(Ω)*sin(θ)*cos(i))
-  const cosTheta = Math.cos(theta);
-  const sinTheta = Math.sin(theta);
-  const cosNode = Math.cos(nodeRad);
-  const sinNode = Math.sin(nodeRad);
-  const cosInc = Math.cos(incRad);
-  const sinInc = Math.sin(incRad);
-
-  const xAU = rAU * (cosNode * cosTheta - sinNode * sinTheta * cosInc);
-  const yAU = rAU * (sinTheta * sinInc);
-  const zAU = rAU * (sinNode * cosTheta + cosNode * sinTheta * cosInc);
-
-  const positionAU = new THREE.Vector3(xAU, yAU, zAU);
-  const direction = positionAU.clone().normalize();
+  let mNorm = stateVector.meanAnomalyRad % (Math.PI * 2);
+  if (mNorm < 0) mNorm += Math.PI * 2;
 
   return {
     rAU,
     distanceMillionKm,
     trueAnomalyRad: nuNorm,
     trueAnomalyDeg: THREE.MathUtils.radToDeg(nuNorm),
-    meanAnomalyRad: M % (Math.PI * 2),
-    meanAnomalyDeg: THREE.MathUtils.radToDeg(M % (Math.PI * 2)),
-    eccentricAnomalyRad: E,
-    eccentricAnomalyDeg: THREE.MathUtils.radToDeg(E),
-    velocityKps,
-    positionAU,
-    direction,
+    meanAnomalyRad: mNorm,
+    meanAnomalyDeg: THREE.MathUtils.radToDeg(mNorm),
+    eccentricAnomalyRad: stateVector.eccentricAnomalyRad,
+    eccentricAnomalyDeg: THREE.MathUtils.radToDeg(stateVector.eccentricAnomalyRad),
+    velocityKps: stateVector.orbitalSpeedKms,
+    velocityVectorKps: stateVector.velocityKms,
+    velocityAUPerDay: stateVector.velocity,
+    positionAU: stateVector.position,
+    direction: stateVector.position.clone().normalize(),
     semiMajorAxisAU: a,
     eccentricity: e,
     orbitalPeriodDays: periodDays
@@ -187,11 +168,11 @@ export function getPlanet3DPosition(
   }
 
   // Enhanced visibility mode with logarithmic depth compression
-  // Tame extreme visual inclination for Pluto/Mercury so orbits form a harmonious celestial disc
-  const elem = CENTRAL_PLANETARY_DATA[id];
-  const periRad = THREE.MathUtils.degToRad(elem?.argumentOfPeriapsisDeg ?? 0);
-  const nodeRad = THREE.MathUtils.degToRad(elem?.longitudeAscendingNodeDeg ?? 0);
-  const incRad = THREE.MathUtils.degToRad(elem?.inclinationDeg ?? 0) * 0.15;
+  // Tame visual inclination for Pluto/Mercury so orbits form an aesthetically readable celestial system
+  const elem = resolvePlanetaryElements(planet);
+  const periRad = THREE.MathUtils.degToRad(elem.argumentOfPeriapsisDeg ?? 0);
+  const nodeRad = THREE.MathUtils.degToRad(elem.longitudeAscendingNodeDeg ?? 0);
+  const incRad = THREE.MathUtils.degToRad(elem.inclinationDeg ?? 0) * 0.15;
 
   const nu = state.trueAnomalyRad;
   const theta = nu + periRad;
@@ -204,12 +185,13 @@ export function getPlanet3DPosition(
   const cosInc = Math.cos(incRad);
   const sinInc = Math.sin(incRad);
 
+  // In Three.js coords: X = X, Y = Z (vertical inclination), Z = Y
   const x = rAU * (cosNode * cosTheta - sinNode * sinTheta * cosInc);
   const y = rAU * (sinTheta * sinInc);
   const z = rAU * (sinNode * cosTheta + cosNode * sinTheta * cosInc);
 
   const pos = new THREE.Vector3(x, y, z);
-  const dir = pos.normalize();
+  const dir = pos.clone().normalize();
   const visualDist = auToVisualDistance(rAU);
   return dir.multiplyScalar(visualDist);
 }
@@ -224,26 +206,16 @@ export function getPlanetOrbitLinePoints(
   scaleMode: ScaleMode = 'enhanced',
   segments = 256
 ): THREE.Vector3[] {
-  let elem: PlanetaryOrbitalElements | null = null;
-
-  if (typeof planetOrId === 'string') {
-    elem = CENTRAL_PLANETARY_DATA[planetOrId.toLowerCase()] || null;
-  } else if ('semiMajorAxisAU' in planetOrId && 'longitudeAscendingNodeDeg' in planetOrId) {
-    elem = planetOrId as PlanetaryOrbitalElements;
-  } else if ('id' in planetOrId) {
-    elem = CENTRAL_PLANETARY_DATA[planetOrId.id.toLowerCase()] || null;
-  }
-
-  if (!elem) return [];
+  const elem = resolvePlanetaryElements(planetOrId);
 
   const a = elem.semiMajorAxisAU;
   const e = elem.eccentricity;
-  const nodeRad = THREE.MathUtils.degToRad(elem.longitudeAscendingNodeDeg);
-  const periRad = THREE.MathUtils.degToRad(elem.argumentOfPeriapsisDeg);
+  const nodeRad = THREE.MathUtils.degToRad(elem.longitudeAscendingNodeDeg ?? 0);
+  const periRad = THREE.MathUtils.degToRad(elem.argumentOfPeriapsisDeg ?? 0);
   const incRad =
     scaleMode === 'true_scale'
-      ? THREE.MathUtils.degToRad(elem.inclinationDeg)
-      : THREE.MathUtils.degToRad(elem.inclinationDeg) * 0.15;
+      ? THREE.MathUtils.degToRad(elem.inclinationDeg ?? 0)
+      : THREE.MathUtils.degToRad(elem.inclinationDeg ?? 0) * 0.15;
 
   const cosNode = Math.cos(nodeRad);
   const sinNode = Math.sin(nodeRad);
@@ -270,7 +242,7 @@ export function getPlanetOrbitLinePoints(
     if (scaleMode === 'true_scale') {
       points.push(posAU.multiplyScalar(23481.0));
     } else {
-      const dir = posAU.normalize();
+      const dir = posAU.clone().normalize();
       const visualDist = auToVisualDistance(rAU);
       points.push(dir.multiplyScalar(visualDist));
     }
@@ -287,6 +259,10 @@ export function getMoonRelativePosition(
   simTimeDays: number,
   scaleMode: ScaleMode = 'enhanced'
 ): THREE.Vector3 {
+  if (!moon) {
+    throw new Error('[CelestialMechanicsError] Null or undefined moon passed to getMoonRelativePosition');
+  }
+
   const periodDays = Math.abs(moon.orbitPeriodDays) || 27.32;
   const isRetrograde = moon.orbitPeriodDays < 0;
   const n = (Math.PI * 2) / periodDays * (isRetrograde ? -1 : 1);
@@ -308,16 +284,7 @@ export function getMoonRelativePosition(
  * For any body orbiting the Sun, a³ / T² in AU and Julian Years equals exactly 1.000.
  */
 export function calculateKeplerRatio(planet: CelestialBodyData | PlanetaryOrbitalElements | string): number {
-  let elem: PlanetaryOrbitalElements | null = null;
-  if (typeof planet === 'string') {
-    elem = CENTRAL_PLANETARY_DATA[planet.toLowerCase()] || null;
-  } else if ('semiMajorAxisAU' in planet) {
-    elem = planet as PlanetaryOrbitalElements;
-  } else if ('id' in planet) {
-    elem = CENTRAL_PLANETARY_DATA[planet.id.toLowerCase()] || null;
-  }
-
-  if (!elem) return 1.0;
+  const elem = resolvePlanetaryElements(planet);
   const a = elem.semiMajorAxisAU;
   const T = elem.orbitalPeriodDays / 365.256;
   return Math.pow(a, 3) / Math.pow(T, 2);
@@ -325,32 +292,21 @@ export function calculateKeplerRatio(planet: CelestialBodyData | PlanetaryOrbita
 
 /**
  * Calculate natural, aesthetically pleasing axial rotation angle for day/night cycles.
- * Preserves true relative physical rotation periods between planets (Jupiter spins 2.4x faster
- * than Earth, Venus spins slowly backwards, Mars matches Earth), while maintaining a comfortable,
- * majestic viewing speed (Earth takes ~32s for 1 rotation at 1x, instead of spinning like a drill).
  */
 export function getPlanetAxialRotation(
   planet: CelestialBodyData | PlanetaryOrbitalElements | string,
   simTimeDays: number
 ): number {
-  let periodHours = 24.0;
-  let id = '';
-
-  if (typeof planet === 'string') {
-    id = planet.toLowerCase();
-    periodHours = CENTRAL_PLANETARY_DATA[id]?.rotationPeriodHours ?? 24.0;
-  } else {
-    id = planet.id.toLowerCase();
-    periodHours = planet.rotationPeriodHours || 24.0;
-  }
+  const elem = resolvePlanetaryElements(planet);
+  const periodHours = elem.rotationPeriodHours ?? 24.0;
+  const id = elem.id.toLowerCase();
 
   const isRetrograde = periodHours < 0 || id === 'venus' || id === 'uranus' || id === 'pluto';
   const direction = isRetrograde ? -1 : 1;
   const absHours = Math.abs(periodHours);
 
-  // Normal, aesthetically pleasing visual rotation speed:
-  // Earth (24h) completes 1 rotation every ~32 seconds.
-  // Other planets scale proportionally according to (24.0 / absHours).
+  // Normal visual rotation rate:
+  // Earth (24h) completes 1 rotation every ~32 seconds at 1x (1 day/sec).
   const relativeRate = Math.min(3.0, 24.0 / Math.max(8.0, absHours));
   const baseAngularSpeed = 0.196; // ~32s period
 

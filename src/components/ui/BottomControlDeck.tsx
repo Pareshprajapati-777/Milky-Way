@@ -41,7 +41,14 @@ export const BottomControlDeck: React.FC<BottomControlDeckProps> = ({
   onResetSimulation
 }) => {
   const isPlaying = timeScale > 0;
-  const speedPresets = [0.2, 1, 5, 20, 100];
+  // Speed presets: 0.2x (0.2 d/s ~ 4.8 hr/s), 1x (1 day/s), 5x (5 days/s), 20x (20 days/s), 100x (100 days/s)
+  const speedPresets = [
+    { value: 0.2, label: '0.2x', tooltip: '0.2 Days/sec (4.8 hr/s)' },
+    { value: 1,   label: '1x',   tooltip: '1.0 Day/sec (Real-Time Planetary Mode)' },
+    { value: 5,   label: '5x',   tooltip: '5.0 Days/sec' },
+    { value: 20,  label: '20x',  tooltip: '20 Days/sec' },
+    { value: 100, label: '100x', tooltip: '100 Days/sec (~3.3 Months/s)' }
+  ];
 
   // Persistent astronomical scale ruler text
   const getScaleRulerText = () => {
@@ -190,20 +197,21 @@ export const BottomControlDeck: React.FC<BottomControlDeckProps> = ({
 
           {/* Speed Presets */}
           <div className="flex items-center bg-space-900/80 p-0.5 rounded-xl border border-white/10 text-xs">
-            {speedPresets.map((speed) => (
+            {speedPresets.map((preset) => (
               <button
-                key={speed}
+                key={preset.value}
                 onClick={() => {
                   soundEngine.playUiClick();
-                  setTimeScale(speed);
+                  setTimeScale(preset.value);
                 }}
+                title={preset.tooltip}
                 className={`px-2 py-1 rounded-lg font-mono text-[10px] transition-all ${
-                  timeScale === speed
+                  timeScale === preset.value
                     ? 'bg-cyan-500 text-black font-bold shadow-sm'
                     : 'text-gray-400 hover:text-white'
                 }`}
               >
-                {speed}x
+                {preset.label}
               </button>
             ))}
           </div>

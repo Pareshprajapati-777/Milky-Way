@@ -167,8 +167,11 @@ export const SimulationScene: React.FC<SimulationSceneProps> = ({
   }
 
   useFrame((_, delta) => {
-    if (timeScale > 0) {
-      activeSimTimeRef.current += delta * timeScale * BASE_SIM_DAYS_PER_SECOND;
+    if (timeScale > 0 && Number.isFinite(delta)) {
+      // 1 real second at 1x speed = 1.0 simulated Earth day (86,400 SI seconds)
+      // Guard against non-finite or negative delta values
+      const safeDelta = Math.max(0, Math.min(delta, 0.5)); // clamp delta to 500ms max to prevent physics explosions on tab freeze
+      activeSimTimeRef.current += safeDelta * timeScale * BASE_SIM_DAYS_PER_SECOND;
     }
   });
 
