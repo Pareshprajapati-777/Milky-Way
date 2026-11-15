@@ -253,6 +253,10 @@ export function getPlanetOrbitLinePoints(
 
 /**
  * Calculates a moon's 3D position relative to its host planet.
+ * Upgraded from flat circular orbit to authentic 3D Keplerian mechanics:
+ * - Solves Kepler's equation for eccentric anomaly E when e > 0
+ * - Transforms perifocal orbital plane coordinates using inclination (i) and node (Ω)
+ * - Supports both prograde and retrograde moon orbits (e.g. Triton)
  */
 export function getMoonRelativePosition(
   moon: MoonData,
@@ -263,20 +267,61 @@ export function getMoonRelativePosition(
     throw new Error('[CelestialMechanicsError] Null or undefined moon passed to getMoonRelativePosition');
   }
 
-  const periodDays = Math.abs(moon.orbitPeriodDays) || 27.32;
+  const periodDays = Math.abs(moon.orbitPeriodDays) || 27.32166;
   const isRetrograde = moon.orbitPeriodDays < 0;
   const n = (Math.PI * 2) / periodDays * (isRetrograde ? -1 : 1);
-  const angle = n * simTimeDays;
+  const M = n * simTimeDays;
 
-  let r = moon.visualOrbitDistance;
+  const e = Math.max(0, Math.min(0.99, moon.eccentricity ?? 0));
+  const incRad = THREE.MathUtils.degToRad(moon.inclinationDeg ?? 0);
+  const nodeRad = THREE.MathUtils.degToRad(moon.longitudeAscendingNodeDeg ?? 0);
+  const periRad = THREE.MathUtils.degToRad(moon.argumentOfPeriapsisDeg ?? 0);
+
+  // Solve for Eccentric Anomaly E
+  const E = e > 0.0001 ? KeplerSolver.solveEccentricAnomaly(M, e) : M;
+
+  // Compute radius factor r / a = 1 - e * cos(E)
+  const rFactor = 1.0 - e * Math.cos(E);
+
+  // Perifocal coordinates in the moon's orbital plane
+  const cosE = Math.cos(E);
+  const sinE = Math.sin(E);
+  const sqrtOneMinusESq = Math.sqrt(Math.max(0, 1.0 - e * e));
+
+  // Base semi-major axis depending on scale mode
+  let a: number;
   if (scaleMode === 'true_scale') {
     // 1 Earth radius = 6,371 km
-    r = moon.orbitDistanceKm / ASTRO_CONSTANTS.EARTH_RADIUS_KM;
+    a = moon.orbitDistanceKm / ASTRO_CONSTANTS.EARTH_RADIUS_KM;
+  } else {
+    a = moon.visualOrbitDistance;
   }
 
-  const x = Math.cos(angle) * r;
-  const z = Math.sin(angle) * r;
-  return new THREE.Vector3(x, 0, z);
+  // Coordinates in orbital plane
+  const xOrb = a * (cosE - e);
+  const yOrb = a * sqrtOneMinusESq * sinE;
+
+  // Euler 3-1-3 rotation into 3D planet-centered space (X-Z orbital plane, +Y is north pole)
+  const cosNode = Math.cos(nodeRad);
+  const sinNode = Math.sin(nodeRad);
+  const cosPeri = Math.cos(periRad);
+  const sinPeri = Math.sin(periRad);
+  const cosInc = Math.cos(incRad);
+  const sinInc = Math.sin(incRad);
+
+  const Px = cosNode * cosPeri - sinNode * sinPeri * cosInc;
+  const Py = sinPeri * sinInc;
+  const Pz = sinNode * cosPeri + cosNode * sinPeri * cosInc;
+
+  const Qx = -cosNode * sinPeri - sinNode * cosPeri * cosInc;
+  const Qy = cosPeri * sinInc;
+  const Qz = -sinNode * sinPeri + cosNode * cosPeri * cosInc;
+
+  const x = xOrb * Px + yOrb * Qx;
+  const y = xOrb * Py + yOrb * Qy;
+  const z = xOrb * Pz + yOrb * Qz;
+
+  return new THREE.Vector3(x, y, z);
 }
 
 /**
@@ -291,9 +336,13 @@ export function calculateKeplerRatio(planet: CelestialBodyData | PlanetaryOrbita
 }
 
 /**
- * Calculate natural, aesthetically pleasing axial rotation angle for day/night cycles.
+ * Physical Axial Rotation:
+ * Computes exact, unscaled physical rotation angle θ in radians according to true sidereal period.
+ * 1 simulated day = 24.0 hours.
+ * θ(t) = direction * (2π * (simTimeDays * 24.0) / |periodHours|)
+ * Direction is -1 for retrograde rotators (Venus, Uranus, Pluto) and +1 for prograde.
  */
-export function getPlanetAxialRotation(
+export function getPhysicalAxialRotation(
   planet: CelestialBodyData | PlanetaryOrbitalElements | string,
   simTimeDays: number
 ): number {
@@ -305,10 +354,42 @@ export function getPlanetAxialRotation(
   const direction = isRetrograde ? -1 : 1;
   const absHours = Math.abs(periodHours);
 
-  // Normal visual rotation rate:
-  // Earth (24h) completes 1 rotation every ~32 seconds at 1x (1 day/sec).
+  // Exact unscaled sidereal rotation
+  return direction * ((Math.PI * 2 * (simTimeDays * 24.0)) / absHours);
+}
+
+/**
+ * Cinematic Visual Axial Rotation:
+ * Provides smooth, comfortable visual spin rate for real-time 3D interactive observation:
+ * - Earth completes 1 rotation every ~32 seconds at 1x simulation speed (1 day/s).
+ * - Relative rotation rate ratios between planets are authentically preserved.
+ * - Retrograde direction is strictly maintained.
+ */
+export function getCinematicAxialRotation(
+  planet: CelestialBodyData | PlanetaryOrbitalElements | string,
+  simTimeDays: number
+): number {
+  const elem = resolvePlanetaryElements(planet);
+  const periodHours = elem.rotationPeriodHours ?? 24.0;
+  const id = elem.id.toLowerCase();
+
+  const isRetrograde = periodHours < 0 || id === 'venus' || id === 'uranus' || id === 'pluto';
+  const direction = isRetrograde ? -1 : 1;
+  const absHours = Math.abs(periodHours);
+
+  // Visual dampening factor preserving planetary rotation ratios without strobe effects:
   const relativeRate = Math.min(3.0, 24.0 / Math.max(8.0, absHours));
-  const baseAngularSpeed = 0.196; // ~32s period
+  const baseAngularSpeed = 0.196; // ~32s period at 1x speed
 
   return direction * baseAngularSpeed * relativeRate * simTimeDays;
+}
+
+/**
+ * Legacy compatibility alias: delegates directly to getCinematicAxialRotation.
+ */
+export function getPlanetAxialRotation(
+  planet: CelestialBodyData | PlanetaryOrbitalElements | string,
+  simTimeDays: number
+): number {
+  return getCinematicAxialRotation(planet, simTimeDays);
 }

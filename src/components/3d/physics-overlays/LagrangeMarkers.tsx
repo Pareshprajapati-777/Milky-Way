@@ -15,7 +15,17 @@ interface LagrangeMarkersProps {
 
 /**
  * Lagrange Points (L1 - L5) & Hill Sphere Visualization
- * Shows Sun-Earth (with JWST at Earth-Sun L2) and Sun-Jupiter Lagrange positions live
+ * Displays Sun-Earth (with JWST at L2) and Sun-Jupiter Lagrange positions:
+ * - L1: Between Sun and secondary body, balanced by gravitational pull
+ * - L2: Beyond secondary body, home to JWST (1.5M km from Earth)
+ * - L3: Opposite side of Sun along orbit
+ * - L4: Leading secondary body by +60° (Greek camp for Jupiter)
+ * - L5: Trailing secondary body by -60° (Trojan camp for Jupiter)
+ *
+ * Visual Scaling Note:
+ * Real Hill sphere radius r_H = r * (m / 3M)^(1/3) is ~0.01 AU for Earth.
+ * In 3D visualization, L1/L2 radial offsets are visually enlarged to 4% (0.04 * r)
+ * to prevent marker geometry from intersecting the rendered planetary body.
  */
 export const LagrangeMarkers: React.FC<LagrangeMarkersProps> = ({
   scaleFactor = 25.0
@@ -45,8 +55,8 @@ export const LagrangeMarkers: React.FC<LagrangeMarkersProps> = ({
           { label: `${sys.secondaryName} L1`, pos: [l1x, 0, l1z] as [number, number, number], color: '#ffea75', info: 'SOHO / Solar Observatory' },
           { label: `${sys.secondaryName} L2`, pos: [l2x, 0, l2z] as [number, number, number], color: '#38bdf8', info: sys.secondaryName === 'Earth' ? '★ JWST (James Webb)' : 'Deep Space Station' },
           { label: `${sys.secondaryName} L3`, pos: [l3x, 0, l3z] as [number, number, number], color: '#ff7596', info: 'Anti-Solar Horizon' },
-          { label: `${sys.secondaryName} L4`, pos: [l4x, 0, l4z] as [number, number, number], color: '#66ffaa', info: 'Trojan Asteroids (Stable)' },
-          { label: `${sys.secondaryName} L5`, pos: [l5x, 0, l5z] as [number, number, number], color: '#66ffaa', info: 'Greek Asteroids (Stable)' }
+          { label: `${sys.secondaryName} L4`, pos: [l4x, 0, l4z] as [number, number, number], color: '#66ffaa', info: sys.secondaryName === 'Jupiter' ? 'Greek Asteroid Camp (+60° Leading)' : 'Equilateral Leading' },
+          { label: `${sys.secondaryName} L5`, pos: [l5x, 0, l5z] as [number, number, number], color: '#66ffaa', info: sys.secondaryName === 'Jupiter' ? 'Trojan Asteroid Camp (-60° Trailing)' : 'Equilateral Trailing' }
         ];
 
         return (

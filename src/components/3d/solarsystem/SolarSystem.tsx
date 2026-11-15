@@ -53,9 +53,10 @@ export const SolarSystem: React.FC<SolarSystemProps> = ({
 
   const planetsList = CELESTIAL_ORDER.filter(id => id !== 'sun').map(id => CELESTIAL_BODIES[id]);
 
-  // Habitable zone boundaries: 0.95 AU to 1.37 AU
+  // Conservative Habitable Zone boundaries (Kopparapu et al. 2013):
+  // Runaway Greenhouse inner edge ~0.95 AU; Maximum Greenhouse outer edge ~1.67 AU
   const hzInner = scaleMode === 'true_scale' ? 0.95 * 23481.0 : auToVisualDistance(0.95);
-  const hzOuter = scaleMode === 'true_scale' ? 1.37 * 23481.0 : auToVisualDistance(1.37);
+  const hzOuter = scaleMode === 'true_scale' ? 1.67 * 23481.0 : auToVisualDistance(1.67);
 
   return (
     <group position={position} scale={[scale, scale, scale]}>

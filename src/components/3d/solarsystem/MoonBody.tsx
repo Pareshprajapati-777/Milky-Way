@@ -53,6 +53,13 @@ export const MoonBody: React.FC<MoonBodyProps> = ({
     return null;
   }, [isEarthMoon]);
 
+  // Authentic 3D inclination rotation for the moon's orbit path
+  const orbitRotation = useMemo(() => {
+    const incRad = THREE.MathUtils.degToRad(moonData.inclinationDeg ?? 0);
+    const nodeRad = THREE.MathUtils.degToRad(moonData.longitudeAscendingNodeDeg ?? 0);
+    return new THREE.Euler(-Math.PI / 2 + incRad, 0, nodeRad, 'YXZ');
+  }, [moonData.inclinationDeg, moonData.longitudeAscendingNodeDeg]);
+
   useFrame((_, delta) => {
     const adjustedDelta = delta * timeScale;
     const currentTime = simTimeRef ? simTimeRef.current : simTime;
@@ -70,7 +77,7 @@ export const MoonBody: React.FC<MoonBodyProps> = ({
   return (
     <>
       {/* Subtle Moon Orbit Line */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh rotation={orbitRotation}>
         <ringGeometry
           args={[
             moonData.visualOrbitDistance - 0.03,

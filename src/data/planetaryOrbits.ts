@@ -2,15 +2,40 @@
  * ============================================================================
  * CENTRALIZED PLANETARY ORBITAL ELEMENTS (AUTHORITATIVE DATASET)
  * ============================================================================
- * Scientific references:
- * - NASA JPL Horizons System (J2000.0 epoch: JD 2451545.0, Jan 1 2000 12:00 TT)
- * - Standish, E. M. (1992) Keplerian Elements for Approximate Positions of Major Planets
- * - IAU Working Group on Cartographic Coordinates and Rotational Elements
+ * Scientific references & authoritative sources:
+ * 1. NASA JPL Solar System Dynamics (SSD) / Horizons On-Line Ephemeris System:
+ *    https://ssd.jpl.nasa.gov/horizons/
+ *    https://ssd.jpl.nasa.gov/planets/approx_pos.html
+ * 2. Standish, E. M. (1992) "Keplerian Elements for Approximate Positions of the Major Planets"
+ * 3. NASA Planetary Fact Sheet (Dr. David R. Williams, NASA Goddard Space Flight Center):
+ *    https://nssdc.gsfc.nasa.gov/planetary/factsheet/
+ * 4. IAU Working Group on Cartographic Coordinates and Rotational Elements (WGCCRE 2018):
+ *    Archinal, B. A., et al. (2018) Celest Mech Dyn Astr 130:22
+ * 5. IAU 2012 Resolution B2: Exact definition of Astronomical Unit (1 AU = 149,597,870.7 km)
  *
- * Coordinates:
- * - Origin: Sun center (0, 0, 0)
- * - Fundamental plane: J2000 Ecliptic plane (X-Z in Three.js, +Y is North Ecliptic Pole)
- * - Primary reference direction: J2000 Vernal Equinox (+X axis)
+ * Epoch & Coordinate Frame:
+ * - Reference Epoch: J2000.0 (Julian Ephemeris Date 2451545.0 TT = 2000 January 1, 12:00:00 TT)
+ * - Origin: Sun Center (0, 0, 0)
+ * - Fundamental Reference Plane: ICRF / J2000 Ecliptic Plane (Three.js X-Z plane, +Y is North Ecliptic Pole)
+ * - Principal Reference Direction: J2000 Mean Vernal Equinox (+X axis)
+ * - Orbit sense: Prograde orbits progress counterclockwise when viewed from +Y
+ *
+ * Physical Units:
+ * - semiMajorAxisAU: Astronomical Units (AU) where 1 AU = 149,597,870.7 km
+ * - eccentricity: Dimensionless Keplerian eccentricity e in [0, 1)
+ * - orbitalPeriodDays: Mean solar Earth days (86,400 SI seconds)
+ * - inclinationDeg: Degrees (°) relative to the J2000.0 ecliptic plane
+ * - longitudeAscendingNodeDeg: Degrees (°) measured east along the ecliptic from J2000 vernal equinox
+ * - argumentOfPeriapsisDeg: Degrees (°) measured along orbital plane from ascending node to perihelion
+ * - meanLongitudeDeg: Mean longitude L = Ω + ω + M at epoch J2000.0 (Degrees)
+ * - radiusKm: Volumetric mean radius in kilometers (km)
+ * - massKg: Total planetary mass in kilograms (kg)
+ * - rotationPeriodHours: True sidereal rotation period in hours (negative sign denotes retrograde spin)
+ * - axialTiltDeg: Obliquity to orbit in degrees (°)
+ *
+ * Known Data Limitations:
+ * - Unperturbed osculating Keplerian two-body approximation. Planetary orbits do not include
+ *   secular N-body planetary perturbations or relativistic perihelion advances over millennia.
  * ============================================================================
  */
 

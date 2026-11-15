@@ -5,6 +5,28 @@ import { MILKY_WAY_DATA } from '../../../data/astronomy';
 import { soundEngine } from '../../../utils/soundEngine';
 import { SagittariusABody } from './SagittariusABody';
 
+/**
+ * ============================================================================
+ * MILKY WAY GALAXY VISUALIZATION & DENSITY WAVE MODEL
+ * ============================================================================
+ * Scientific Architecture & Representation Disclosure:
+ * - Galaxy Model: Barred Spiral (SBbc) conforming to Lin-Shu Density Wave Theory.
+ * - Spiral Arms: 4 main logarithmic spirals (Perseus, Scutum-Centaurus, Sagittarius,
+ *   Norma) + local Orion-Cygnus Spur, governed by r(θ) = a * exp(b * θ).
+ * - Rotation Curve: v(r) = v0 * tanh(r / r_core), simulating the flat rotation
+ *   curve produced by the dark matter halo (Rubin 1980, Sofue 2020).
+ * - Dimensions: Scaled to 100,000 Light-Years diameter, ~1,000 LY disk thickness.
+ * - Solar System: Located ~26,490 LY from Galactic Center in the Orion Spur.
+ * - Sagittarius A*: Located at dynamical center (0, 0, 0), mass 4.154M M☉.
+ *
+ * NOTE ON PROCEDURAL GEOMETRY VS. OBSERVATIONAL CATALOG:
+ * The 240,000 galaxy particle points are a statistical procedural representation
+ * of galactic stellar density distributions and are NOT individually catalogued
+ * real stars. Specific real astronomical objects are catalogued independently in
+ * `src/data/galacticCatalog.ts` (e.g. Sgr A*, Proxima Centauri, Pleiades, Orion Nebula).
+ * ============================================================================
+ */
+
 interface MilkyWayGalaxyProps {
   onWarpToSolarSystem: () => void;
   isHoveredOverSun: boolean;

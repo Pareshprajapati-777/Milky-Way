@@ -1,3 +1,19 @@
+/**
+ * ============================================================================
+ * CELESTIAL BODIES & ASTROPHYSICAL DATASET
+ * ============================================================================
+ * Authoritative scientific sources:
+ * - NASA Planetary Fact Sheet (NASA Goddard Space Flight Center)
+ * - NASA JPL Solar System Dynamics (SSD) / Horizons On-Line Ephemeris System
+ * - IAU 2012 / 2015 Constants & Resolutions
+ * - Reid et al. (2019) Galactic Center Astrometric Measurements
+ *
+ * Epoch & System:
+ * - Standard Epoch: J2000.0 (JD 2451545.0, 2000 Jan 1 12:00 TT)
+ * - Physical SI & Astronomical Units (km, AU, kg, K, °C, days, hours)
+ * ============================================================================
+ */
+
 export interface AtmosphereComponent {
   gas: string;
   formula: string;
@@ -22,6 +38,11 @@ export interface MoonData {
   tidallyLocked: boolean;
   specialFeature: string;
   missions: string[];
+  // High-precision Keplerian orbital elements (relative to parent planet equatorial / orbital plane)
+  eccentricity?: number;
+  inclinationDeg?: number;
+  longitudeAscendingNodeDeg?: number;
+  argumentOfPeriapsisDeg?: number;
 }
 
 export interface CelestialBodyData {
@@ -319,7 +340,7 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
     eccentricity: 0.0067,
     inclinationDeg: 3.39,
     axialTiltDeg: 177.36, // Retrograde rotation
-    rotationPeriodHours: 5832.5, // 243 days retrograde
+    rotationPeriodHours: -5832.5, // 243.02 days retrograde
     temperature: { minC: 438, avgC: 464, maxC: 482, minK: 711, avgK: 737, maxK: 755 },
     atmosphere: {
       hasAtmosphere: true,
@@ -414,8 +435,12 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.65,
         orbitDistanceKm: 384400,
         visualOrbitDistance: 5.2,
-        orbitPeriodDays: 27.32,
-        orbitSpeed: 2.2,
+        orbitPeriodDays: 27.32166,
+        orbitSpeed: 1.022,
+        eccentricity: 0.0549,
+        inclinationDeg: 5.145,
+        longitudeAscendingNodeDeg: 125.08,
+        argumentOfPeriapsisDeg: 318.15,
         color: '#E2E8F0',
         textureType: 'moon',
         description: 'Earth’s only natural satellite, with dark volcanic maria, highland craters, and permanent tidal locking.',
@@ -497,8 +522,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.28,
         orbitDistanceKm: 9376,
         visualOrbitDistance: 2.8,
-        orbitPeriodDays: 0.32,
-        orbitSpeed: 4.5,
+        orbitPeriodDays: 0.3189,
+        orbitSpeed: 2.138,
+        eccentricity: 0.0151,
+        inclinationDeg: 1.075,
         color: '#9CA3AF',
         textureType: 'rocky',
         description: 'Heavily grooved, potato-shaped moon spiraling inexorably closer to Mars.',
@@ -515,8 +542,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.22,
         orbitDistanceKm: 23463,
         visualOrbitDistance: 3.8,
-        orbitPeriodDays: 1.26,
-        orbitSpeed: 3.0,
+        orbitPeriodDays: 1.263,
+        orbitSpeed: 1.351,
+        eccentricity: 0.00033,
+        inclinationDeg: 1.79,
         color: '#D1D5DB',
         textureType: 'rocky',
         description: 'Smooth outer Martian moon blanketed in a thick layer of regolith dust.',
@@ -598,8 +627,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.72,
         orbitDistanceKm: 421700,
         visualOrbitDistance: 13.5,
-        orbitPeriodDays: 1.77,
-        orbitSpeed: 2.6,
+        orbitPeriodDays: 1.7691,
+        orbitSpeed: 17.33,
+        eccentricity: 0.0041,
+        inclinationDeg: 0.050,
         color: '#FACC15',
         textureType: 'io',
         description: 'Most volcanically active body in the Solar System, driven by tidal friction from Jupiter and Europa.',
@@ -616,8 +647,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.65,
         orbitDistanceKm: 670900,
         visualOrbitDistance: 17.0,
-        orbitPeriodDays: 3.55,
-        orbitSpeed: 2.0,
+        orbitPeriodDays: 3.5512,
+        orbitSpeed: 13.74,
+        eccentricity: 0.0090,
+        inclinationDeg: 0.470,
         color: '#E0F2FE',
         textureType: 'europa',
         description: 'Smooth icy crust crisscrossed with reddish fracture lineae concealing a global liquid water ocean.',
@@ -634,8 +667,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.95,
         orbitDistanceKm: 1070400,
         visualOrbitDistance: 22.0,
-        orbitPeriodDays: 7.15,
-        orbitSpeed: 1.6,
+        orbitPeriodDays: 7.1546,
+        orbitSpeed: 10.88,
+        eccentricity: 0.0013,
+        inclinationDeg: 0.200,
         color: '#94A3B8',
         textureType: 'ganymede',
         description: 'The largest moon in the Solar System (bigger than planet Mercury) with its own internal magnetic field.',
@@ -652,8 +687,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.88,
         orbitDistanceKm: 1882700,
         visualOrbitDistance: 27.5,
-        orbitPeriodDays: 16.69,
-        orbitSpeed: 1.2,
+        orbitPeriodDays: 16.689,
+        orbitSpeed: 8.204,
+        eccentricity: 0.0074,
+        inclinationDeg: 0.200,
         color: '#64748B',
         textureType: 'rocky',
         description: 'Most heavily cratered object in the Solar System, preserving an ancient 4-billion-year-old surface.',
@@ -737,8 +774,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.92,
         orbitDistanceKm: 1221870,
         visualOrbitDistance: 26.0,
-        orbitPeriodDays: 15.95,
-        orbitSpeed: 1.8,
+        orbitPeriodDays: 15.945,
+        orbitSpeed: 5.57,
+        eccentricity: 0.0288,
+        inclinationDeg: 0.3485,
         color: '#F59E0B',
         textureType: 'titan',
         description: 'Only moon with a dense atmosphere and liquid hydrocarbon lakes (methane/ethane) on its surface.',
@@ -755,8 +794,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.42,
         orbitDistanceKm: 238000,
         visualOrbitDistance: 19.5,
-        orbitPeriodDays: 1.37,
-        orbitSpeed: 3.2,
+        orbitPeriodDays: 1.3702,
+        orbitSpeed: 12.63,
+        eccentricity: 0.0047,
+        inclinationDeg: 0.019,
         color: '#F8FAFC',
         textureType: 'europa',
         description: 'Ultra-reflective icy moon with active cryovolcanic geysers erupting from south polar tiger stripe fractures.',
@@ -773,8 +814,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.35,
         orbitDistanceKm: 185520,
         visualOrbitDistance: 18.2,
-        orbitPeriodDays: 0.94,
-        orbitSpeed: 3.8,
+        orbitPeriodDays: 0.9424,
+        orbitSpeed: 14.28,
+        eccentricity: 0.0202,
+        inclinationDeg: 1.574,
         color: '#E2E8F0',
         textureType: 'rocky',
         description: 'Small icy moon dominated by the colossal 130 km wide Herschel impact crater (looks like the Death Star).',
@@ -857,8 +900,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.60,
         orbitDistanceKm: 435910,
         visualOrbitDistance: 10.5,
-        orbitPeriodDays: 8.71,
-        orbitSpeed: 1.5,
+        orbitPeriodDays: 8.706,
+        orbitSpeed: 3.64,
+        eccentricity: 0.0011,
+        inclinationDeg: 0.340,
         color: '#CBD5E1',
         textureType: 'rocky',
         description: 'Largest moon of Uranus, scored with colossal fault canyons and impact scarps.',
@@ -875,8 +920,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.35,
         orbitDistanceKm: 129390,
         visualOrbitDistance: 8.5,
-        orbitPeriodDays: 1.41,
-        orbitSpeed: 2.4,
+        orbitPeriodDays: 1.4135,
+        orbitSpeed: 6.66,
+        eccentricity: 0.0013,
+        inclinationDeg: 4.232,
         color: '#E2E8F0',
         textureType: 'rocky',
         description: 'Extreme patchwork terrain with the steepest cliff in the Solar System (Verona Rupes, 20 km high).',
@@ -914,8 +961,8 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
     escapeVelocityKps: 23.5,
     distanceFromSunAU: 30.047,
     distanceFromSunMillionKm: 4495.1,
-    orbitalPeriodDays: 60189.0,
-    orbitalPeriodYears: 164.8,
+    orbitalPeriodDays: 60182.0,
+    orbitalPeriodYears: 164.79,
     orbitalVelocityKps: 5.43,
     eccentricity: 0.0086,
     inclinationDeg: 1.77,
@@ -950,8 +997,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.68,
         orbitDistanceKm: 354760,
         visualOrbitDistance: 9.5,
-        orbitPeriodDays: -5.88, // Retrograde orbit
-        orbitSpeed: 1.9,
+        orbitPeriodDays: -5.877, // Retrograde orbit
+        orbitSpeed: 4.39,
+        eccentricity: 0.000016,
+        inclinationDeg: 156.885,
         color: '#BAE6FD',
         textureType: 'triton',
         description: 'Captured Kuiper Belt dwarf planet with active nitrogen geysers and cantaloupe terrain.',
@@ -1022,8 +1071,10 @@ export const CELESTIAL_BODIES: Record<string, CelestialBodyData> = {
         visualRadius: 0.38,
         orbitDistanceKm: 19570,
         visualOrbitDistance: 2.5,
-        orbitPeriodDays: 6.39,
-        orbitSpeed: 1.8,
+        orbitPeriodDays: 6.3872,
+        orbitSpeed: 0.223,
+        eccentricity: 0.0002,
+        inclinationDeg: 0.001,
         color: '#94A3B8',
         textureType: 'rocky',
         description: 'Mutually tidally locked binary companion to Pluto with a red tholin-rich north pole (Mordor Macula).',
