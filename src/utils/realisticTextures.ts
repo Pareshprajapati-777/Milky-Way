@@ -52,6 +52,73 @@ textureLoader.crossOrigin = 'anonymous';
 // Texture cache to prevent duplicate network calls and ensure shared GPU instances
 const textureCache = new Map<string, THREE.Texture>();
 
+function createInitialEarthCanvas(): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  // Deep blue ocean
+  ctx.fillStyle = '#0f3875';
+  ctx.fillRect(0, 0, 256, 128);
+  // Polar ice
+  ctx.fillStyle = '#e2f1fc';
+  ctx.fillRect(0, 0, 256, 12);
+  ctx.fillRect(0, 116, 256, 12);
+  // Stylized continents
+  ctx.fillStyle = '#2d6a36';
+  ctx.beginPath();
+  // Eurasia / Africa
+  ctx.ellipse(140, 50, 45, 25, 0.2, 0, Math.PI * 2);
+  ctx.ellipse(145, 75, 25, 25, 0, 0, Math.PI * 2);
+  // Americas
+  ctx.ellipse(60, 45, 30, 20, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(75, 80, 20, 30, 0.2, 0, Math.PI * 2);
+  // Australia
+  ctx.ellipse(190, 85, 18, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  return canvas;
+}
+
+function createInitialNightCanvas(): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = '#05070d';
+  ctx.fillRect(0, 0, 256, 128);
+  // Golden city clusters
+  ctx.fillStyle = '#fce28b';
+  for (let i = 0; i < 120; i++) {
+    const x = (i * 37) % 256;
+    const y = 20 + ((i * 19) % 88);
+    ctx.fillRect(x, y, 1.5, 1.5);
+  }
+  return canvas;
+}
+
+function createInitialCloudsCanvas(): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, 256, 128);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+  for (let i = 0; i < 30; i++) {
+    const x = (i * 47) % 256;
+    const y = (i * 23) % 128;
+    ctx.beginPath();
+    ctx.ellipse(x, y, 25, 6, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvas;
+}
+
 /**
  * Direct Three.js Texture loading matching the implementations in REYAL look HTML files.
  * Directly yields a clean Three.js Texture that uploads automatically when received.
@@ -91,6 +158,23 @@ export function getDirectRealisticTexture(
       }
     }
   );
+
+  // Pre-seed texture image with instant procedural canvas so it is NEVER blank/transparent
+  if (typeof document !== 'undefined') {
+    let initialCanvas: HTMLCanvasElement | null = null;
+    if (url.includes('earth_daymap')) {
+      initialCanvas = createInitialEarthCanvas();
+    } else if (url.includes('earth_nightmap')) {
+      initialCanvas = createInitialNightCanvas();
+    } else if (url.includes('earth_clouds')) {
+      initialCanvas = createInitialCloudsCanvas();
+    }
+
+    if (initialCanvas) {
+      texture.image = initialCanvas;
+      texture.needsUpdate = true;
+    }
+  }
 
   if (!isDataMap) {
     texture.colorSpace = THREE.SRGBColorSpace;

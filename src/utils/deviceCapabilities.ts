@@ -107,3 +107,4 @@ export function detectDeviceCapabilities(): DeviceProfile {
     recommendedQuality
   };
 }
+

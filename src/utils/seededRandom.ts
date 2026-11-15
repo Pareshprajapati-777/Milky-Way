@@ -12,3 +12,4 @@ export function createSeededRandom(initialSeed: number = 0x19800723): () => numb
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+

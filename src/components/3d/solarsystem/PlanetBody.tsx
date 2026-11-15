@@ -74,7 +74,9 @@ const SaturnLook: React.FC<{
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       uniforms: {
-        glowColor: { value: new THREE.Color(0xd8b979) }
+        glowColor: { value: new THREE.Color(0xc9ab6e) },
+        rimPower: { value: 3.8 },
+        rimAlpha: { value: 0.16 }
       },
       vertexShader: RayleighAtmosphereShader.vertexShader,
       fragmentShader: RayleighAtmosphereShader.fragmentShader
@@ -110,11 +112,12 @@ const SaturnLook: React.FC<{
         map: ringTexture,
         alphaMap: ringTexture,
         transparent: true,
-        opacity: cfg.opacity,
+        opacity: cfg.opacity * 0.82,
         side: THREE.DoubleSide,
         depthWrite: false,
-        color: 0xd8c59a,
-        shininess: 4
+        color: 0xc4b285,
+        shininess: 1,
+        specular: new THREE.Color(0x0a0805)
       });
 
       return { geo, mat };
@@ -185,12 +188,11 @@ const SaturnLook: React.FC<{
       {/* Ring dust particles */}
       <points geometry={particleGeo} rotation={[Math.PI / 2, 0, 0]}>
         <pointsMaterial
-          size={0.08}
+          size={0.03}
           vertexColors
           transparent
-          opacity={0.55}
+          opacity={0.18}
           depthWrite={false}
-          blending={THREE.AdditiveBlending}
         />
       </points>
     </>
@@ -223,7 +225,9 @@ const UranusLook: React.FC<{
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       uniforms: {
-        glowColor: { value: new THREE.Color(0x31585c) }
+        glowColor: { value: new THREE.Color(0x31585c) },
+        rimPower: { value: 3.5 },
+        rimAlpha: { value: 0.20 }
       },
       vertexShader: RayleighAtmosphereShader.vertexShader,
       fragmentShader: RayleighAtmosphereShader.fragmentShader
@@ -316,7 +320,9 @@ const NeptuneLook: React.FC<{
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       uniforms: {
-        glowColor: { value: new THREE.Color(0x164b9a) }
+        glowColor: { value: new THREE.Color(0x164b9a) },
+        rimPower: { value: 3.5 },
+        rimAlpha: { value: 0.20 }
       },
       vertexShader: RayleighAtmosphereShader.vertexShader,
       fragmentShader: RayleighAtmosphereShader.fragmentShader
@@ -644,6 +650,9 @@ const EarthLook: React.FC<{
 
   const earthMaterial = useMemo(() => {
     return new THREE.ShaderMaterial({
+      transparent: false,
+      depthWrite: true,
+      depthTest: true,
       uniforms: {
         uDayMap: { value: dayMap },
         uNightMap: { value: nightMap },
@@ -675,23 +684,23 @@ const EarthLook: React.FC<{
 
       {/* 2. Cloud Layer Sphere from earth.html */}
       <mesh ref={cloudsRef}>
-        <sphereGeometry args={[R * 1.008, 128, 128]} />
+        <sphereGeometry args={[R * 1.006, 128, 128]} />
         <meshStandardMaterial
           map={cloudsMap}
           transparent
-          opacity={0.8}
-          blending={THREE.AdditiveBlending}
+          opacity={0.70}
+          blending={THREE.NormalBlending}
           depthWrite={false}
         />
       </mesh>
 
       {/* 3. Subtle Rayleigh atmosphere glow */}
       <mesh>
-        <sphereGeometry args={[R * 1.025, 96, 96]} />
+        <sphereGeometry args={[R * 1.018, 96, 96]} />
         <meshBasicMaterial
           color="#38BDF8"
           transparent
-          opacity={0.16}
+          opacity={0.10}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
           depthWrite={false}

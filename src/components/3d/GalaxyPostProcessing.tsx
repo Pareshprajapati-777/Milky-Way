@@ -75,10 +75,10 @@ export const GalaxyPostProcessing: React.FC<GalaxyPostProcessingProps> = ({ view
       bloom.radius = 0.72;
       bloom.threshold = 0.035;
     } else {
-      // In solar / planet modes: gentle glow for the Sun
-      bloom.strength = 0.35;
-      bloom.radius = 0.45;
-      bloom.threshold = 0.25;
+      // In solar / planet modes: gentle glow for the radiant Sun only, preventing planet blowout
+      bloom.strength = 0.28;
+      bloom.radius = 0.40;
+      bloom.threshold = 0.65;
     }
 
     composer.render();
