@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 
 interface MassSource {
@@ -51,6 +51,12 @@ export const GravityWellGrid: React.FC<GravityWellGridProps> = ({
     geom.computeVertexNormals();
     return geom;
   }, [gridSize, divisions, masses]);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
 
   return (
     <group position={[0, -0.6, 0]}>

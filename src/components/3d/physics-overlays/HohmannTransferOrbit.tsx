@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { Html } from '@react-three/drei';
 import { CENTRAL_PLANETARY_DATA, MU_SUN_KM3_S2, KM_PER_AU } from '../../../data/planetaryOrbits';
@@ -69,6 +69,12 @@ export const HohmannTransferOrbit: React.FC<HohmannTransferOrbitProps> = ({
   }, [a_tx_AU, e_tx, scaleFactor]);
 
   const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints(curvePoints), [curvePoints]);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
 
   return (
     <group>

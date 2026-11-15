@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "test": "node scripts/runPhysicsValidation.js && npx tsx scripts/validatePhase1Physics.ts && npx tsx scripts/validatePhase2Science.ts && npx tsx scripts/validatePhase3Navigation.ts && npx tsx scripts/validatePhase4Performance.ts && npx tsx scripts/validatePhase5QA.ts",
+    "test": "node scripts/runPhysicsValidation.js && npx tsx scripts/validatePhase1Physics.ts && npx tsx scripts/validatePhase2Science.ts && npx tsx scripts/validatePhase3Navigation.ts && npx tsx scripts/validatePhase4Performance.ts && npx tsx scripts/validatePhase5QA.ts && npx tsx scripts/validatePhase6Regression.ts",
     "preview": "vite preview"
   },
   "dependencies": {

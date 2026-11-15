@@ -177,11 +177,19 @@ npm run build
 npm run preview
 ```
 
-### Run Physics Validation Suite
-Execute the automated 10-point test runner verifying Keplerian mechanics, epoch determinism, periodicity, and numerical stability:
+### Run Comprehensive Test & Regression Suite
+Execute the automated 89-point test suites covering celestial mechanics, JPL Horizons multi-epoch validation, navigation integrity, graphics presets, and Phase 6 regression tests:
 ```bash
-node scripts/runPhysicsValidation.js
+npm test
 ```
+The test suite executes:
+- `scripts/runPhysicsValidation.js`: 10-point core celestial mechanics tests
+- `scripts/validatePhase1Physics.ts`: 10-point solver & coordinate transformation tests
+- `scripts/validatePhase2Science.ts`: 10-point astrophysical accuracy & moon tests
+- `scripts/validatePhase3Navigation.ts`: 7-point camera, state, and UI transition tests
+- `scripts/validatePhase4Performance.ts`: 7-point memory, shader, and PRNG tests
+- `scripts/validatePhase5QA.ts`: 40-point full QA audit across 9 testing layers
+- `scripts/validatePhase6Regression.ts`: 5-point defect repair & regression tests
 
 ---
 

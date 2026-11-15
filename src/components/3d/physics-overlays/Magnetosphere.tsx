@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 
 interface MagnetosphereProps {
@@ -65,6 +65,13 @@ export const Magnetosphere: React.FC<MagnetosphereProps> = ({
     }
     return spirals;
   }, [includeParkerSpiral]);
+
+  useEffect(() => {
+    return () => {
+      dipoleGeometries.forEach((g) => g.dispose());
+      parkerSpiralGeometries.forEach((g) => g.dispose());
+    };
+  }, [dipoleGeometries, parkerSpiralGeometries]);
 
   return (
     <group>

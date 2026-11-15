@@ -20,7 +20,7 @@ import {
   Wind
 } from 'lucide-react';
 
-import { calculateKeplerianOrbit } from '../../utils/orbitalPhysics';
+import { calculateKeplerianOrbit, getPlanetOrbitalElements } from '../../utils/orbitalPhysics';
 
 interface TelemetryCardProps {
   body: CelestialBodyData;
@@ -54,26 +54,30 @@ export const TelemetryCard: React.FC<TelemetryCardProps> = ({
   const anomalyRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    if (body.id === 'sun') return;
+    if (body.id === 'sun' || !getPlanetOrbitalElements(body)) return;
 
     const interval = setInterval(() => {
-      const currentSimDays = simTimeRef ? simTimeRef.current : 0;
-      const state = calculateKeplerianOrbit(body, currentSimDays);
+      try {
+        const currentSimDays = simTimeRef ? simTimeRef.current : 0;
+        const state = calculateKeplerianOrbit(body, currentSimDays);
 
-      if (distAuRef.current) {
-        distAuRef.current.innerText = `${state.rAU.toFixed(3)} AU`;
-      }
-      if (distKmRef.current) {
-        distKmRef.current.innerText = `${state.distanceMillionKm.toFixed(1)}M km (Current)`;
-      }
-      if (velKpsRef.current) {
-        velKpsRef.current.innerText = `${state.velocityKps.toFixed(2)} km/s`;
-      }
-      if (velKmhRef.current) {
-        velKmhRef.current.innerText = `${(state.velocityKps * 3600).toFixed(0)} km/h`;
-      }
-      if (anomalyRef.current) {
-        anomalyRef.current.innerText = `Anomaly ν: ${state.trueAnomalyDeg.toFixed(1)}°`;
+        if (distAuRef.current) {
+          distAuRef.current.innerText = `${state.rAU.toFixed(3)} AU`;
+        }
+        if (distKmRef.current) {
+          distKmRef.current.innerText = `${state.distanceMillionKm.toFixed(1)}M km (Current)`;
+        }
+        if (velKpsRef.current) {
+          velKpsRef.current.innerText = `${state.velocityKps.toFixed(2)} km/s`;
+        }
+        if (velKmhRef.current) {
+          velKmhRef.current.innerText = `${(state.velocityKps * 3600).toFixed(0)} km/h`;
+        }
+        if (anomalyRef.current) {
+          anomalyRef.current.innerText = `Anomaly ν: ${state.trueAnomalyDeg.toFixed(1)}°`;
+        }
+      } catch {
+        // Guard against any transient calculation error during rapid state transitions
       }
     }, 100); // 10Hz / 100ms smooth throttle
 
@@ -81,7 +85,9 @@ export const TelemetryCard: React.FC<TelemetryCardProps> = ({
   }, [body.id, simTimeRef]);
 
   // Initial calculation fallback
-  const initialOrbitState = body.id !== 'sun' && simTimeRef ? calculateKeplerianOrbit(body, simTimeRef.current) : null;
+  const initialOrbitState = body.id !== 'sun' && getPlanetOrbitalElements(body) && simTimeRef 
+    ? calculateKeplerianOrbit(body, simTimeRef.current) 
+    : null;
 
   // Helper to convert temperatures
   const formatTemp = (tempC: number) => {
