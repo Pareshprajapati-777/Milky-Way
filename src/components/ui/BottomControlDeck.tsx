@@ -24,6 +24,7 @@ interface BottomControlDeckProps {
   scaleMode: ScaleMode;
   onReturnToGalaxy: () => void;
   onWarpToSolar: () => void;
+  onSelectSolarOverview?: () => void;
   onScreenshot: () => void;
   onResetSimulation?: () => void;
 }
@@ -37,6 +38,7 @@ export const BottomControlDeck: React.FC<BottomControlDeckProps> = ({
   scaleMode,
   onReturnToGalaxy,
   onWarpToSolar,
+  onSelectSolarOverview,
   onScreenshot,
   onResetSimulation
 }) => {
@@ -68,7 +70,7 @@ export const BottomControlDeck: React.FC<BottomControlDeckProps> = ({
   const { ruler, lightTime } = getScaleRulerText();
 
   return (
-    <div className="fixed bottom-3 inset-x-0 z-30 flex flex-col items-center gap-1.5 px-4 pointer-events-auto select-none font-tech">
+    <div className="fixed bottom-2 sm:bottom-3 inset-x-0 z-30 flex flex-col items-center gap-1.5 px-2 sm:px-4 pointer-events-auto select-none font-tech">
       {/* 1. Quick Celestial Body Selector Strip (when inside Solar System or Planet view) */}
       {viewMode !== 'galaxy' && viewMode !== 'warp_to_galaxy' && (
         <div className="w-full max-w-4xl flex items-center justify-start md:justify-center gap-1.5 overflow-x-auto pb-1 scrollbar-none animate-fadeIn">
@@ -129,7 +131,11 @@ export const BottomControlDeck: React.FC<BottomControlDeckProps> = ({
           <button
             onClick={() => {
               soundEngine.playUiClick();
-              if (viewMode === 'galaxy') onWarpToSolar();
+              if (viewMode === 'galaxy') {
+                onWarpToSolar();
+              } else if (viewMode === 'planet' || viewMode === 'moon') {
+                if (onSelectSolarOverview) onSelectSolarOverview();
+              }
             }}
             className={`px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1.5 ${
               viewMode === 'solar'

@@ -27,6 +27,7 @@ interface CameraControllerProps {
   timeScale: number;
   simTime?: number;
   simTimeRef?: React.MutableRefObject<number>;
+  cameraResetToken?: number;
 }
 
 export const CameraController: React.FC<CameraControllerProps> = ({
@@ -40,7 +41,8 @@ export const CameraController: React.FC<CameraControllerProps> = ({
   isCinematicTour,
   timeScale,
   simTime = 0,
-  simTimeRef
+  simTimeRef,
+  cameraResetToken
 }) => {
   const { camera } = useThree();
   const controlsRef = useRef<OrbitControlsImpl>(null);
@@ -65,6 +67,9 @@ export const CameraController: React.FC<CameraControllerProps> = ({
   useEffect(() => {
     if (!controlsRef.current) return;
     const perspCamera = camera as THREE.PerspectiveCamera;
+
+    const isWarping = viewMode === 'warp_to_solar' || viewMode === 'warp_to_galaxy';
+    controlsRef.current.enabled = !isWarping;
 
     transitionStartCamPos.current.copy(camera.position);
     transitionStartLookAt.current.copy(controlsRef.current.target);
@@ -182,7 +187,7 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       isTransitioning.current = true;
       transitionDuration.current = 0.9;
     }
-  }, [viewMode, selectedBody?.id, selectedMoon?.id, scaleMode]);
+  }, [viewMode, selectedBody?.id, selectedMoon?.id, scaleMode, cameraResetToken]);
 
   // Cancel programmatic lerp if user starts interacting manually
   useEffect(() => {
@@ -217,6 +222,12 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       // Smooth Quintic easing (smoothstep with zero 1st & 2nd derivatives)
       // s(t) = 6t^5 - 15t^4 + 10t^3
       const ease = t * t * t * (t * (t * 6 - 15) + 10);
+
+      // Continuous Exponential Scale Zoom (FOV + Scale Interpolation)
+      const perspCamera = camera as THREE.PerspectiveCamera;
+      const fovPulse = Math.sin(t * Math.PI);
+      perspCamera.fov = THREE.MathUtils.lerp(46, 62, fovPulse);
+      perspCamera.updateProjectionMatrix();
 
       const [sunX, sunY, sunZ] = MILKY_WAY_DATA.sunPosition.position3D;
       const solarSystemApproach = new THREE.Vector3(sunX, sunY + 2.5, sunZ);
@@ -260,6 +271,8 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       }
 
       if (t >= 1.0) {
+        perspCamera.fov = 46;
+        perspCamera.updateProjectionMatrix();
         setViewMode(viewMode === 'warp_to_solar' ? 'solar' : 'galaxy');
         onWarpComplete();
       }
@@ -327,7 +340,9 @@ export const CameraController: React.FC<CameraControllerProps> = ({
         const prevTarget = controlsRef.current.target.clone();
         controlsRef.current.target.copy(planetPos);
         const shift = planetPos.clone().sub(prevTarget);
-        camera.position.add(shift);
+        if (shift.lengthSq() < 2500 && Number.isFinite(shift.x)) {
+          camera.position.add(shift);
+        }
       }
       controlsRef.current.update();
       return;
@@ -342,7 +357,9 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       const prevTarget = controlsRef.current.target.clone();
       controlsRef.current.target.copy(moonPos);
       const shift = moonPos.clone().sub(prevTarget);
-      camera.position.add(shift);
+      if (shift.lengthSq() < 2500 && Number.isFinite(shift.x)) {
+        camera.position.add(shift);
+      }
       controlsRef.current.update();
       return;
     }

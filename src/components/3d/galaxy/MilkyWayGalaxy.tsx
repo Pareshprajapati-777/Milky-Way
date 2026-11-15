@@ -195,7 +195,6 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
 }) => {
   const galaxyGroupRef = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.Mesh>(null);
-  const accretionRingRef = useRef<THREE.Mesh>(null);
   const sunMarkerRef = useRef<THREE.Group>(null);
   const [pulseScale, setPulseScale] = useState(1);
 
@@ -706,10 +705,6 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
       coreRef.current.rotation.z += delta * 0.02;
     }
 
-    if (accretionRingRef.current) {
-      accretionRingRef.current.rotation.z -= delta * 0.08;
-    }
-
     if (sunMarkerRef.current) {
       sunMarkerRef.current.position.y = sunPos.y + Math.sin(time * 3.0) * 0.4;
     }
@@ -801,21 +796,8 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
           />
         </sprite>
 
-        {/* 8. Supermassive Black Hole Sagittarius A* (Accretion Flow & Horizon) */}
-        <mesh position={[0, 0, 0]}>
-          <sphereGeometry args={[1.5, 32, 32]} />
-          <meshBasicMaterial color="#000000" />
-        </mesh>
-        <mesh ref={accretionRingRef} rotation={[-Math.PI / 3, 0, 0]}>
-          <ringGeometry args={[2.2, 5.0, 64]} />
-          <meshBasicMaterial
-            color="#FF6B00"
-            transparent
-            opacity={0.4}
-            side={THREE.DoubleSide}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
+        {/* 8. Supermassive Black Hole Sagittarius A* at Galactic Center (0, 0, 0) */}
+        <SagittariusABody position={[0, 0, 0]} scale={0.8} />
 
         {/* 9. EARTH & SOLAR SYSTEM LOCATOR MARKER */}
         <group position={sunPos} ref={sunMarkerRef}>
@@ -866,9 +848,6 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
           </mesh>
 
         </group>
-
-        {/* Sagittarius A* (Supermassive Black Hole at the Galactic Core 0,0,0) */}
-        <SagittariusABody position={[0, 0, 0]} scale={0.7} />
       </group>
     </group>
   );

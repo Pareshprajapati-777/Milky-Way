@@ -68,7 +68,7 @@ export const LeftNavTools: React.FC<LeftNavToolsProps> = ({
   };
 
   return (
-    <div className="fixed left-4 top-20 z-30 flex flex-col gap-2 pointer-events-auto select-none font-tech">
+    <div className="fixed left-2 sm:left-4 top-16 sm:top-20 z-30 flex flex-col gap-2 pointer-events-auto select-none font-tech">
       {/* Floating Glass Tool Strip */}
       <div className="flex flex-col gap-1.5 p-1.5 rounded-2xl bg-space-950/80 border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
         {/* 1. Reset Camera Angle */}

@@ -111,6 +111,7 @@ interface SimulationSceneProps {
   showLabels: boolean;
   showHabitableZone: boolean;
   onTransitionProgressUpdate?: (progress: number) => void;
+  cameraResetToken?: number;
 }
 
 export const SimulationScene: React.FC<SimulationSceneProps> = ({
@@ -133,7 +134,8 @@ export const SimulationScene: React.FC<SimulationSceneProps> = ({
   showAsteroids,
   showLabels,
   showHabitableZone,
-  onTransitionProgressUpdate
+  onTransitionProgressUpdate,
+  cameraResetToken
 }) => {
   const fallbackSimTimeRef = useRef<number>(0);
   const activeSimTimeRef = simTimeRef || fallbackSimTimeRef;
@@ -201,6 +203,7 @@ export const SimulationScene: React.FC<SimulationSceneProps> = ({
         isCinematicTour={isCinematicTour}
         timeScale={timeScale}
         simTimeRef={activeSimTimeRef}
+        cameraResetToken={cameraResetToken}
       />
 
       {/* Relativistic Warp Flight Streaks */}

@@ -42,6 +42,7 @@ export function App() {
   // Audio & Omnibar States
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [isOmnibarOpen, setIsOmnibarOpen] = useState<boolean>(false);
+  const [cameraResetToken, setCameraResetToken] = useState<number>(0);
 
   // Canvas Reference for Screenshots
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -83,10 +84,17 @@ export function App() {
   }, [viewMode]);
 
   // 4. Select a specific Moon of a Planet
-  const handleSelectMoon = useCallback((moon: MoonData) => {
+  const handleSelectMoon = useCallback((moon: MoonData, parentBody?: CelestialBodyData) => {
+    if (parentBody) {
+      setSelectedBody(parentBody);
+    }
     setSelectedMoon(moon);
-    setViewMode('moon');
-  }, []);
+    if (viewMode === 'galaxy') {
+      setViewMode('warp_to_solar');
+    } else {
+      setViewMode('moon');
+    }
+  }, [viewMode]);
 
   // 5. Reset to Solar System Overview
   const handleSelectSolarOverview = useCallback(() => {
@@ -97,17 +105,9 @@ export function App() {
 
   // 6. Reset Camera Orientation
   const handleResetCamera = useCallback(() => {
-    if (viewMode === 'planet' && selectedBody) {
-      // Re-trigger planet camera alignment
-      const body = selectedBody;
-      setSelectedBody(null);
-      setTimeout(() => setSelectedBody(body), 50);
-    } else if (viewMode === 'solar') {
-      setViewMode('solar');
-    } else if (viewMode === 'galaxy') {
-      setViewMode('galaxy');
-    }
-  }, [viewMode, selectedBody]);
+    soundEngine.playUiClick();
+    setCameraResetToken(prev => prev + 1);
+  }, []);
 
   // 7. Screenshot Capture
   const handleScreenshot = useCallback(() => {
@@ -123,8 +123,18 @@ export function App() {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Omnibar shortcut (Ctrl+K or Cmd+K)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      const target = e.target as HTMLElement | null;
+      const isInputField = Boolean(
+        target && (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable
+        )
+      );
+
+      // Omnibar shortcut (Ctrl+K, Cmd+K, or '/' when not typing in an input field)
+      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !isInputField)) {
         e.preventDefault();
         setIsOmnibarOpen(prev => !prev);
         return;
@@ -136,6 +146,8 @@ export function App() {
           setShowDisclosureModal(false);
         } else if (isOmnibarOpen) {
           setIsOmnibarOpen(false);
+        } else if (showDebugHUD) {
+          setShowDebugHUD(false);
         } else if (selectedMoon) {
           setSelectedMoon(null);
           setViewMode('planet');
@@ -145,6 +157,11 @@ export function App() {
         } else if (viewMode === 'solar') {
           handleReturnToGalaxy();
         }
+        return;
+      }
+
+      // If user is typing in a text field, do not trigger single-key simulation controls
+      if (isInputField) {
         return;
       }
 
@@ -216,14 +233,15 @@ export function App() {
   }, [
     isOmnibarOpen,
     showDisclosureModal,
+    showDebugHUD,
     selectedMoon,
     selectedBody,
     viewMode,
     isMuted,
     handleReturnToGalaxy,
-    handleSelectBody,
     handleResetCamera,
-    handleResetSimulation
+    handleResetSimulation,
+    handleSelectBody
   ]);
 
   // Unlock Web Audio on first user interaction
@@ -265,9 +283,16 @@ export function App() {
           selectedBody={selectedBody}
           selectedMoon={selectedMoon}
           scaleMode={scaleMode}
+          cameraResetToken={cameraResetToken}
           onWarpComplete={() => {
             if (viewMode === 'warp_to_solar') {
-              setViewMode(selectedBody ? 'planet' : 'solar');
+              if (selectedMoon && selectedBody) {
+                setViewMode('moon');
+              } else if (selectedBody) {
+                setViewMode('planet');
+              } else {
+                setViewMode('solar');
+              }
             } else {
               setViewMode('galaxy');
             }
@@ -325,8 +350,8 @@ export function App() {
       )}
 
       {/* 4. Right Side Telemetry Card (Milky Way or Celestial Body) */}
-      <div className="absolute top-16 bottom-28 right-4 z-20 flex items-center justify-end pointer-events-none">
-        <div className="pointer-events-auto max-h-[calc(100vh-8.5rem)] overflow-y-auto pr-1">
+      <div className="absolute top-16 bottom-24 sm:bottom-28 right-2 sm:right-4 left-2 sm:left-auto max-w-[calc(100vw-1rem)] sm:max-w-[440px] z-20 flex items-center justify-end pointer-events-none">
+        <div className="pointer-events-auto w-full max-h-[calc(100vh-8.5rem)] overflow-y-auto pr-1">
           {viewMode === 'galaxy' && showGalaxyCard && (
             <MilkyWayTelemetryCard
               onWarpToSolarSystem={handleWarpToSolar}
@@ -360,7 +385,7 @@ export function App() {
       </div>
 
       {/* 5. Bottom Scientific Cockpit & Scale Deck */}
-      {viewMode !== 'galaxy' && viewMode !== 'warp_to_solar' && viewMode !== 'warp_to_galaxy' && (
+      {viewMode !== 'warp_to_solar' && viewMode !== 'warp_to_galaxy' && (
         <BottomControlDeck
           timeScale={timeScale}
           setTimeScale={setTimeScale}
@@ -370,6 +395,7 @@ export function App() {
           scaleMode={scaleMode}
           onReturnToGalaxy={handleReturnToGalaxy}
           onWarpToSolar={handleWarpToSolar}
+          onSelectSolarOverview={handleSelectSolarOverview}
           onScreenshot={handleScreenshot}
           onResetSimulation={handleResetSimulation}
         />
@@ -400,8 +426,7 @@ export function App() {
         onClose={() => setIsOmnibarOpen(false)}
         onSelectBody={handleSelectBody}
         onSelectMoon={(body, moon) => {
-          setSelectedBody(body);
-          handleSelectMoon(moon);
+          handleSelectMoon(moon, body);
         }}
         onSelectGalaxy={handleReturnToGalaxy}
       />

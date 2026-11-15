@@ -28,28 +28,33 @@ export const ScientificDebugHUD: React.FC<ScientificDebugHUDProps> = ({
 
   useEffect(() => {
     let frameCount = 0;
-    let lastTime = performance.now();
+    let lastFpsTime = performance.now();
+    let lastThrottleTime = 0;
     let animId: number;
 
     const measure = (now: number) => {
       frameCount++;
-      const elapsed = now - lastTime;
+      const elapsed = now - lastFpsTime;
       if (elapsed >= 500) {
         const currentFps = Math.round((frameCount * 1000) / elapsed);
         setFps(currentFps);
         setFrameTime(Number((1000 / Math.max(1, currentFps)).toFixed(1)));
         frameCount = 0;
-        lastTime = now;
+        lastFpsTime = now;
       }
 
-      const currentSimDays = simTimeRef ? simTimeRef.current : 0;
-      setSimDays(currentSimDays);
+      // Throttle scientific telemetry updates to 10Hz (every 100ms) to ensure 60FPS rendering without re-render thrashing
+      if (now - lastThrottleTime >= 100) {
+        lastThrottleTime = now;
+        const currentSimDays = simTimeRef ? simTimeRef.current : 0;
+        setSimDays(currentSimDays);
 
-      if (selectedBody && selectedBody.id !== 'sun') {
-        const state = calculateKeplerianOrbit(selectedBody, currentSimDays);
-        setLivePhysics(state);
-      } else {
-        setLivePhysics(null);
+        if (selectedBody && selectedBody.id !== 'sun') {
+          const state = calculateKeplerianOrbit(selectedBody, currentSimDays);
+          setLivePhysics(state);
+        } else {
+          setLivePhysics(null);
+        }
       }
 
       animId = requestAnimationFrame(measure);
