@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MilkyWayGalaxy } from './galaxy/MilkyWayGalaxy';
@@ -9,28 +9,34 @@ import { GalaxyPostProcessing } from './GalaxyPostProcessing';
 import { CelestialBodyData, MoonData } from '../../data/astronomy';
 import { ScaleMode } from '../../utils/astronomicalUnits';
 import { BASE_SIM_DAYS_PER_SECOND } from '../../utils/orbitalPhysics';
+import { createSeededRandom } from '../../utils/seededRandom';
+import { useSimulationStore } from '../../state/useSimulationStore';
+import { GRAPHICS_PRESETS } from '../../utils/deviceCapabilities';
 
 const DeepSpaceStarField: React.FC = () => {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
+  const activeLOD = useSimulationStore((state) => state.activeLOD);
+  const preset = GRAPHICS_PRESETS[activeLOD || 'HIGH'] || GRAPHICS_PRESETS.HIGH;
 
   const { geometry, material } = React.useMemo(() => {
-    const count = 18000;
+    const count = Math.round(18000 * preset.particleMultiplier);
+    const rng = createSeededRandom(0x44656570); // Seed 'Deep'
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const color = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
-      const radius = THREE.MathUtils.randFloat(900, 1800);
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(THREE.MathUtils.randFloat(-1, 1));
+      const radius = 900 + rng() * 900;
+      const theta = rng() * Math.PI * 2;
+      const phi = Math.acos(rng() * 2 - 1);
 
       positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
       positions[i * 3 + 1] = radius * Math.cos(phi);
       positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
 
-      const colorRoll = Math.random();
+      const colorRoll = rng();
       if (colorRoll < 0.6) color.set('#c9dcff');
       else if (colorRoll < 0.8) color.set('#ffffff');
       else if (colorRoll < 0.92) color.set('#ffd4a0');
@@ -39,13 +45,14 @@ const DeepSpaceStarField: React.FC = () => {
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
-      sizes[i] = 0.35 + Math.pow(Math.random(), 8) * 4;
+      sizes[i] = 0.35 + Math.pow(rng(), 8) * 4;
     }
 
     const starGeometry = new THREE.BufferGeometry();
     starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     starGeometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    starGeometry.computeBoundingSphere();
 
     const starMaterial = new THREE.ShaderMaterial({
       transparent: true,
@@ -77,7 +84,14 @@ const DeepSpaceStarField: React.FC = () => {
     });
 
     return { geometry: starGeometry, material: starMaterial };
-  }, []);
+  }, [preset.particleMultiplier]);
+
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
 
   useFrame(() => {
     if (groupRef.current) groupRef.current.position.copy(camera.position);

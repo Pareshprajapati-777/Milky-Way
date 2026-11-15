@@ -3,6 +3,8 @@ import { ViewMode } from '../3d/CameraController';
 import { CelestialBodyData } from '../../data/astronomy';
 import { ScaleMode } from '../../utils/astronomicalUnits';
 import { calculateKeplerRatio, calculateKeplerianOrbit, OrbitPhysicsState } from '../../utils/orbitalPhysics';
+import { useSimulationStore } from '../../state/useSimulationStore';
+import { GRAPHICS_PRESETS } from '../../utils/deviceCapabilities';
 
 interface ScientificDebugHUDProps {
   visible: boolean;
@@ -67,6 +69,11 @@ export const ScientificDebugHUD: React.FC<ScientificDebugHUDProps> = ({
   if (!visible) return null;
 
   const keplerRatio = selectedBody ? calculateKeplerRatio(selectedBody) : 1.0;
+  const activeLOD = useSimulationStore((state) => state.activeLOD || 'HIGH');
+  const preset = GRAPHICS_PRESETS[activeLOD];
+  const activeParticles = viewMode === 'galaxy' || viewMode === 'warp_to_galaxy' || viewMode === 'warp_to_solar'
+    ? Math.round(371000 * preset.particleMultiplier)
+    : Math.round(23000 * preset.particleMultiplier);
 
   return (
     <div className="fixed top-16 right-4 z-40 w-88 font-mono text-[11px] bg-space-950/95 border border-cyan-500/40 rounded-xl p-3.5 backdrop-blur-2xl text-cyan-200/90 shadow-[0_8px_32px_rgba(0,0,0,0.85)] pointer-events-auto select-none animate-fadeIn">
@@ -99,6 +106,25 @@ export const ScientificDebugHUD: React.FC<ScientificDebugHUDProps> = ({
           <span className="text-gray-400">COORDINATE FRAME:</span>
           <span className="text-white">
             {viewMode === 'galaxy' ? 'GALACTOCENTRIC (SGR A*)' : 'HELIOCENTRIC (SOL BARYCENTER)'}
+          </span>
+        </div>
+
+        <div className="flex justify-between border-t border-white/5 pt-1.5">
+          <span className="text-gray-400">GRAPHICS PRESET:</span>
+          <span className="text-emerald-400 font-bold">
+            {activeLOD} ({preset.particleMultiplier * 100}% DENSITY, DPR {preset.maxDpr})
+          </span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-gray-400">ACTIVE GPU PARTICLES:</span>
+          <span className="text-cyan-300 font-bold">{activeParticles.toLocaleString()}</span>
+        </div>
+
+        <div className="flex justify-between">
+          <span className="text-gray-400">BLOOM PASS:</span>
+          <span className={preset.enableBloom ? 'text-amber-300' : 'text-gray-500'}>
+            {preset.enableBloom ? 'ACTIVE' : 'OFF (POWER SAVE)'}
           </span>
         </div>
 

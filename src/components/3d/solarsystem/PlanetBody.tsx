@@ -25,6 +25,10 @@ import { soundEngine } from '../../../utils/soundEngine';
 import { getPlanet3DPosition, getPlanetAxialRotation } from '../../../utils/orbitalPhysics';
 import { ScaleMode, ASTRO_CONSTANTS } from '../../../utils/astronomicalUnits';
 
+// Static pre-allocated vectors to eliminate garbage collection pressure in 60FPS useFrame loop
+const _sunOrigin = new THREE.Vector3(0, 0, 0);
+const _tempSunDir = new THREE.Vector3();
+
 interface PlanetBodyProps {
   planet: CelestialBodyData;
   timeScale: number;
@@ -770,8 +774,8 @@ export const PlanetBody: React.FC<PlanetBodyProps> = ({
     if (planet.id === 'earth' && planetMeshRef.current && currentPos) {
       const mat = planetMeshRef.current.material as THREE.ShaderMaterial;
       if (mat && mat.uniforms && mat.uniforms.uSunDirection) {
-        const sunDir = new THREE.Vector3().subVectors(new THREE.Vector3(0, 0, 0), currentPos).normalize();
-        mat.uniforms.uSunDirection.value.copy(sunDir);
+        _tempSunDir.subVectors(_sunOrigin, currentPos).normalize();
+        mat.uniforms.uSunDirection.value.copy(_tempSunDir);
         mat.uniforms.uTime.value += delta * timeScale;
       }
     }

@@ -1,9 +1,12 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { MILKY_WAY_DATA } from '../../../data/astronomy';
 import { soundEngine } from '../../../utils/soundEngine';
 import { SagittariusABody } from './SagittariusABody';
+import { createSeededRandom } from '../../../utils/seededRandom';
+import { useSimulationStore } from '../../../state/useSimulationStore';
+import { GRAPHICS_PRESETS } from '../../../utils/deviceCapabilities';
 
 /**
  * ============================================================================
@@ -186,6 +189,14 @@ function createGlowTexture(colorStr: string): THREE.CanvasTexture {
   return new THREE.CanvasTexture(canvas);
 }
 
+function randFloatSpreadSeeded(rng: () => number, range: number): number {
+  return (rng() - 0.5) * range;
+}
+
+function randFloatSeeded(rng: () => number, min: number, max: number): number {
+  return min + rng() * (max - min);
+}
+
 export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
   onWarpToSolarSystem,
   isHoveredOverSun,
@@ -193,17 +204,23 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
   visible,
   opacity = 1.0
 }) => {
+  const activeLOD = useSimulationStore((state) => state.activeLOD);
+  const preset = GRAPHICS_PRESETS[activeLOD || 'HIGH'] || GRAPHICS_PRESETS.HIGH;
+  const particleMultiplier = preset.particleMultiplier;
+
   const galaxyGroupRef = useRef<THREE.Group>(null);
   const coreRef = useRef<THREE.Mesh>(null);
   const sunMarkerRef = useRef<THREE.Group>(null);
-  const [pulseScale, setPulseScale] = useState(1);
+  const innerRingRef = useRef<THREE.Mesh>(null);
+  const outerRingRef = useRef<THREE.Mesh>(null);
 
   // Reference to galaxy star shader material for uniform updates
   const galaxyStarMaterialRef = useRef<THREE.ShaderMaterial | null>(null);
 
-  // 1. GALAXY STARS (240,000 Particles)
+  // 1. GALAXY STARS (Adaptive Preset Count: 240,000 at High)
   const { starsGeometry, galaxyStarMaterial } = useMemo(() => {
-    const count = SETTINGS.galaxyStars;
+    const count = Math.round(SETTINGS.galaxyStars * particleMultiplier);
+    const rng = createSeededRandom(0x4d696c6b); // Deterministic seed 'Milk'
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
@@ -213,38 +230,38 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
 
     for (let i = 0; i < count; i++) {
       let radius: number;
-      if (Math.random() < 0.22) {
-        radius = Math.pow(Math.random(), 1.9) * 27;
+      if (rng() < 0.22) {
+        radius = Math.pow(rng(), 1.9) * 27;
       } else {
-        radius = 8 + Math.pow(Math.random(), 0.63) * 54;
+        radius = 8 + Math.pow(rng(), 0.63) * 54;
       }
 
-      let angle = Math.random() * Math.PI * 2;
+      let angle = rng() * Math.PI * 2;
 
-      if (Math.random() < 0.74) {
-        const selectedArm = ARMS[Math.floor(Math.random() * ARMS.length)];
+      if (rng() < 0.74) {
+        const selectedArm = ARMS[Math.floor(rng() * ARMS.length)];
         const target = armAngle(radius, selectedArm);
         const spread =
           SETTINGS.armWidth *
           selectedArm.width *
-          (0.15 + Math.random() * 1.45);
-        angle = target + THREE.MathUtils.randFloatSpread(spread);
+          (0.15 + rng() * 1.45);
+        angle = target + randFloatSpreadSeeded(rng, spread);
       }
 
       const localArm = nearestArm(radius, angle);
       const armDensity =
         Math.exp(-Math.pow(localArm.distance, 2) * 1.6) * localArm.strength;
-      const clump = 0.72 + Math.pow(Math.random(), 3) * 1.6;
+      const clump = 0.72 + Math.pow(rng(), 3) * 1.6;
 
       let actualRadius = radius;
-      actualRadius += THREE.MathUtils.randFloatSpread(1.7 + armDensity * 2.6);
+      actualRadius += randFloatSpreadSeeded(rng, 1.7 + armDensity * 2.6);
 
       const x = Math.cos(angle) * actualRadius;
       const z = Math.sin(angle) * actualRadius;
 
       const thickness =
         SETTINGS.diskThickness * (0.25 + 0.85 * Math.exp(-radius / 27));
-      let y = THREE.MathUtils.randFloatSpread(thickness);
+      let y = randFloatSpreadSeeded(rng, thickness);
       y +=
         Math.sin(angle * 2.0 + radius * 0.11) *
         (radius / SETTINGS.galaxyRadius) *
@@ -254,9 +271,9 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
       positions[i * 3 + 1] = y;
       positions[i * 3 + 2] = z;
 
-      color.copy(getStarColor(radius, armDensity, Math.random()));
+      color.copy(getStarColor(radius, armDensity, rng()));
       const brightness =
-        (0.52 + Math.random() * 0.62) *
+        (0.52 + rng() * 0.62) *
         (0.72 + armDensity * 0.38) *
         clump;
       color.multiplyScalar(brightness);
@@ -265,13 +282,13 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
 
-      let size = 0.45 + Math.pow(Math.random(), 8) * 4.8;
+      let size = 0.45 + Math.pow(rng(), 8) * 4.8;
       size *= 0.75 + armDensity * 0.55;
       if (radius < SETTINGS.bulgeRadius) size *= 0.85;
 
       sizes[i] = size;
-      alphas[i] = 0.42 + Math.random() * 0.58;
-      randoms[i] = Math.random();
+      alphas[i] = 0.42 + rng() * 0.58;
+      randoms[i] = rng();
     }
 
     const geometry = new THREE.BufferGeometry();
@@ -280,6 +297,7 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
     geometry.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
     geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
+    geometry.computeBoundingSphere();
 
     const material = new THREE.ShaderMaterial({
       transparent: true,
@@ -335,37 +353,39 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
 
     galaxyStarMaterialRef.current = material;
     return { starsGeometry: geometry, galaxyStarMaterial: material };
-  }, []);
+  }, [particleMultiplier]);
 
-  // 2. CENTRAL BAR (15,000 Particles)
+  // 2. CENTRAL BAR (Adaptive Preset Count: 15,000 at High)
   const { barGeometry, barMaterial } = useMemo(() => {
-    const count = 15000;
+    const count = Math.round(15000 * particleMultiplier);
+    const rng = createSeededRandom(0x42617253); // Seed 'BarS'
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const color = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
-      const x = THREE.MathUtils.randFloatSpread(15);
+      const x = randFloatSpreadSeeded(rng, 15);
       const width = 1.7 * (1 - Math.abs(x) / 8);
 
       positions[i * 3] = x;
-      positions[i * 3 + 1] = THREE.MathUtils.randFloatSpread(width);
-      positions[i * 3 + 2] = THREE.MathUtils.randFloatSpread(width * 0.75);
+      positions[i * 3 + 1] = randFloatSpreadSeeded(rng, width);
+      positions[i * 3 + 2] = randFloatSpreadSeeded(rng, width * 0.75);
 
-      color.copy(Math.random() < 0.7 ? COLOR.gold : COLOR.warm);
-      color.multiplyScalar(0.6 + Math.random() * 0.55);
+      color.copy(rng() < 0.7 ? COLOR.gold : COLOR.warm);
+      color.multiplyScalar(0.6 + rng() * 0.55);
 
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
-      sizes[i] = 0.5 + Math.random() * 2.2;
+      sizes[i] = 0.5 + rng() * 2.2;
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    geometry.computeBoundingSphere();
 
     const material = new THREE.ShaderMaterial({
       transparent: true,
@@ -398,45 +418,47 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     });
 
     return { barGeometry: geometry, barMaterial: material };
-  }, []);
+  }, [particleMultiplier]);
 
-  // 3. STAR FORMATION REGIONS (11,000 Particles)
+  // 3. STAR FORMATION REGIONS (Adaptive Preset Count: 11,000 at High)
   const { starFormationGeometry, starFormationMaterial } = useMemo(() => {
-    const count = SETTINGS.starFormation;
+    const count = Math.round(SETTINGS.starFormation * particleMultiplier);
+    const rng = createSeededRandom(0x48325265); // Seed 'H2Re'
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const color = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
-      const radius = THREE.MathUtils.randFloat(12, 56);
-      const arm = ARMS[Math.floor(Math.random() * ARMS.length)];
+      const radius = randFloatSeeded(rng, 12, 56);
+      const arm = ARMS[Math.floor(rng() * ARMS.length)];
       const center = armAngle(radius, arm);
       const angle =
-        center + THREE.MathUtils.randFloatSpread(0.075 + Math.random() * 0.17);
-      const radial = radius + THREE.MathUtils.randFloatSpread(2.4);
+        center + randFloatSpreadSeeded(rng, 0.075 + rng() * 0.17);
+      const radial = radius + randFloatSpreadSeeded(rng, 2.4);
 
       positions[i * 3] = Math.cos(angle) * radial;
-      positions[i * 3 + 1] = THREE.MathUtils.randFloatSpread(1.6);
+      positions[i * 3 + 1] = randFloatSpreadSeeded(rng, 1.6);
       positions[i * 3 + 2] = Math.sin(angle) * radial;
 
-      const r = Math.random();
+      const r = rng();
       if (r < 0.40) color.copy(COLOR.pink);
       else if (r < 0.68) color.copy(COLOR.purple);
       else if (r < 0.86) color.copy(COLOR.cyan);
       else color.copy(COLOR.red);
 
-      color.multiplyScalar(0.55 + Math.random() * 0.7);
+      color.multiplyScalar(0.55 + rng() * 0.7);
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
-      sizes[i] = 0.8 + Math.pow(Math.random(), 4) * 5.5;
+      sizes[i] = 0.8 + Math.pow(rng(), 4) * 5.5;
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    geometry.computeBoundingSphere();
 
     const material = new THREE.ShaderMaterial({
       transparent: true,
@@ -471,37 +493,39 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     });
 
     return { starFormationGeometry: geometry, starFormationMaterial: material };
-  }, []);
+  }, [particleMultiplier]);
 
-  // 4. DUST LANES (28,000 Particles - Interstellar absorbing lanes)
+  // 4. DUST LANES (Adaptive Preset Count: 28,000 at High)
   const { dustGeometry, dustMaterial } = useMemo(() => {
-    const count = SETTINGS.dustParticles;
+    const count = Math.round(SETTINGS.dustParticles * particleMultiplier);
+    const rng = createSeededRandom(0x44757374); // Seed 'Dust'
     const positions = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const alphas = new Float32Array(count);
 
     for (let i = 0; i < count; i++) {
-      const radius = THREE.MathUtils.randFloat(10, 59);
-      const arm = ARMS[Math.floor(Math.random() * ARMS.length)];
+      const radius = randFloatSeeded(rng, 10, 59);
+      const arm = ARMS[Math.floor(rng() * ARMS.length)];
       const center = armAngle(radius, arm);
       const angle =
         center +
         0.055 +
-        THREE.MathUtils.randFloatSpread(0.11 + arm.width * 0.12);
-      const radial = radius + THREE.MathUtils.randFloatSpread(3.5);
+        randFloatSpreadSeeded(rng, 0.11 + arm.width * 0.12);
+      const radial = radius + randFloatSpreadSeeded(rng, 3.5);
 
       positions[i * 3] = Math.cos(angle) * radial;
-      positions[i * 3 + 1] = THREE.MathUtils.randFloatSpread(1.0);
+      positions[i * 3 + 1] = randFloatSpreadSeeded(rng, 1.0);
       positions[i * 3 + 2] = Math.sin(angle) * radial;
 
-      sizes[i] = 1.0 + Math.random() * 4.0;
-      alphas[i] = 0.025 + Math.random() * 0.075;
+      sizes[i] = 1.0 + rng() * 4.0;
+      alphas[i] = 0.025 + rng() * 0.075;
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
     geometry.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+    geometry.computeBoundingSphere();
 
     const material = new THREE.ShaderMaterial({
       transparent: true,
@@ -534,45 +558,47 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     });
 
     return { dustGeometry: geometry, dustMaterial: material };
-  }, []);
+  }, [particleMultiplier]);
 
-  // 5. NEBULA CLOUDS (32,000 Particles)
+  // 5. NEBULA CLOUDS (Adaptive Preset Count: 32,000 at High)
   const { nebulaGeometry, nebulaMaterial } = useMemo(() => {
-    const count = SETTINGS.nebulaParticles;
+    const count = Math.round(SETTINGS.nebulaParticles * particleMultiplier);
+    const rng = createSeededRandom(0x4e656275); // Seed 'Nebu'
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const color = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
-      const radius = THREE.MathUtils.randFloat(12, 59);
-      const arm = ARMS[Math.floor(Math.random() * ARMS.length)];
+      const radius = randFloatSeeded(rng, 12, 59);
+      const arm = ARMS[Math.floor(rng() * ARMS.length)];
       const center = armAngle(radius, arm);
-      const angle = center + THREE.MathUtils.randFloatSpread(0.24);
-      const radial = radius + THREE.MathUtils.randFloatSpread(5.5);
+      const angle = center + randFloatSpreadSeeded(rng, 0.24);
+      const radial = radius + randFloatSpreadSeeded(rng, 5.5);
 
       positions[i * 3] = Math.cos(angle) * radial;
-      positions[i * 3 + 1] = THREE.MathUtils.randFloatSpread(2.8);
+      positions[i * 3 + 1] = randFloatSpreadSeeded(rng, 2.8);
       positions[i * 3 + 2] = Math.sin(angle) * radial;
 
-      const r = Math.random();
+      const r = rng();
       if (r < 0.25) color.copy(COLOR.blue);
       else if (r < 0.46) color.copy(COLOR.violet);
       else if (r < 0.68) color.copy(COLOR.purple);
       else if (r < 0.84) color.copy(COLOR.pink);
       else color.copy(COLOR.orange);
 
-      color.multiplyScalar(0.45 + Math.random() * 0.55);
+      color.multiplyScalar(0.45 + rng() * 0.55);
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
-      sizes[i] = 0.5 + Math.random() * 3.2;
+      sizes[i] = 0.5 + rng() * 3.2;
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    geometry.computeBoundingSphere();
 
     const material = new THREE.ShaderMaterial({
       transparent: true,
@@ -606,26 +632,27 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     });
 
     return { nebulaGeometry: geometry, nebulaMaterial: material };
-  }, []);
+  }, [particleMultiplier]);
 
-  // 6. BACKGROUND STAR FIELD (45,000 Particles)
+  // 6. BACKGROUND STAR FIELD (Adaptive Preset Count: 45,000 at High)
   const { backgroundStarsGeometry, backgroundStarsMaterial } = useMemo(() => {
-    const count = SETTINGS.backgroundStars;
+    const count = Math.round(SETTINGS.backgroundStars * particleMultiplier);
+    const rng = createSeededRandom(0x42675374); // Seed 'BgSt'
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const sizes = new Float32Array(count);
     const color = new THREE.Color();
 
     for (let i = 0; i < count; i++) {
-      const radius = THREE.MathUtils.randFloat(110, 520);
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(THREE.MathUtils.randFloat(-1, 1));
+      const radius = randFloatSeeded(rng, 110, 520);
+      const theta = rng() * Math.PI * 2;
+      const phi = Math.acos(randFloatSeeded(rng, -1, 1));
 
       positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
       positions[i * 3 + 1] = radius * Math.cos(phi);
       positions[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
 
-      const r = Math.random();
+      const r = rng();
       if (r < 0.60) color.set("#c9dcff");
       else if (r < 0.80) color.set("#ffffff");
       else if (r < 0.92) color.set("#ffd4a0");
@@ -634,13 +661,14 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
-      sizes[i] = 0.35 + Math.pow(Math.random(), 8) * 4.0;
+      sizes[i] = 0.35 + Math.pow(rng(), 8) * 4.0;
     }
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    geometry.computeBoundingSphere();
 
     const material = new THREE.ShaderMaterial({
       transparent: true,
@@ -673,7 +701,7 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     });
 
     return { backgroundStarsGeometry: geometry, backgroundStarsMaterial: material };
-  }, []);
+  }, [particleMultiplier]);
 
   // 7. CENTRAL GLOW SPRITES
   const glowTexture1 = useMemo(() => createGlowTexture("rgba(255,238,185,1)"), []);
@@ -685,9 +713,44 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
     return new THREE.Vector3(x, y, z);
   }, []);
 
-  // Continuous Galactic Dynamics Animation Loop
+  // GPU Resource Disposal Lifecycle
+  useEffect(() => {
+    return () => {
+      starsGeometry.dispose();
+      galaxyStarMaterial.dispose();
+      barGeometry.dispose();
+      barMaterial.dispose();
+      starFormationGeometry.dispose();
+      starFormationMaterial.dispose();
+      dustGeometry.dispose();
+      dustMaterial.dispose();
+      nebulaGeometry.dispose();
+      nebulaMaterial.dispose();
+      backgroundStarsGeometry.dispose();
+      backgroundStarsMaterial.dispose();
+      glowTexture1.dispose();
+      glowTexture2.dispose();
+    };
+  }, [
+    starsGeometry,
+    galaxyStarMaterial,
+    barGeometry,
+    barMaterial,
+    starFormationGeometry,
+    starFormationMaterial,
+    dustGeometry,
+    dustMaterial,
+    nebulaGeometry,
+    nebulaMaterial,
+    backgroundStarsGeometry,
+    backgroundStarsMaterial,
+    glowTexture1,
+    glowTexture2
+  ]);
+
+  // Continuous Galactic Dynamics Animation Loop (Zero React Re-renders)
   useFrame((state, delta) => {
-    if (!visible) return;
+    if (!visible || opacity <= 0.001) return;
     const time = state.clock.getElapsedTime();
 
     // Astronomical rotation rate matching milky_way.html
@@ -709,14 +772,22 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
       sunMarkerRef.current.position.y = sunPos.y + Math.sin(time * 3.0) * 0.4;
     }
 
-    setPulseScale(1.0 + Math.sin(time * 4.0) * 0.25);
+    // Direct mesh ref mutations for 60FPS zero-rerender radar pulse
+    const pulse = 1.0 + Math.sin(time * 4.0) * 0.25;
+    if (innerRingRef.current) {
+      innerRingRef.current.scale.set(pulse, pulse, pulse);
+    }
+    if (outerRingRef.current) {
+      const pulseOuter = pulse * 1.4;
+      outerRingRef.current.scale.set(pulseOuter, pulseOuter, pulseOuter);
+    }
   });
 
   if (!visible || opacity <= 0.001) return null;
 
   return (
     <group>
-      {/* 45,000 Background Stars on Celestial Sphere */}
+      {/* Background Stars on Celestial Sphere */}
       <primitive object={new THREE.Points(backgroundStarsGeometry, backgroundStarsMaterial)} />
 
       {/* Main Galactic Body tilted with exact angles from milky_way.html: x=8deg, z=-6deg */}
@@ -729,21 +800,21 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
           THREE.MathUtils.degToRad(-6)
         ]}
       >
-        {/* 1. 240,000 Main Galaxy Stars */}
+        {/* 1. Main Galaxy Stars */}
         <primitive object={new THREE.Points(starsGeometry, galaxyStarMaterial)} />
 
-        {/* 2. 15,000 Central Elongated Bar Stars (rotated 8 deg around Z) */}
+        {/* 2. Central Elongated Bar Stars (rotated 8 deg around Z) */}
         <group rotation={[0, 0, THREE.MathUtils.degToRad(8)]}>
           <primitive object={new THREE.Points(barGeometry, barMaterial)} />
         </group>
 
-        {/* 3. 11,000 Star Formation H II Regions */}
+        {/* 3. Star Formation H II Regions */}
         <primitive object={new THREE.Points(starFormationGeometry, starFormationMaterial)} />
 
-        {/* 4. 28,000 Interstellar Dark Dust Lanes */}
+        {/* 4. Interstellar Dark Dust Lanes */}
         <primitive object={new THREE.Points(dustGeometry, dustMaterial)} />
 
-        {/* 5. 32,000 Volumetric Nebula Clouds */}
+        {/* 5. Volumetric Nebula Clouds */}
         <primitive object={new THREE.Points(nebulaGeometry, nebulaMaterial)} />
 
         {/* 6. Central Galactic Bulge (Double Layer Squashed Spheroids + Point Light) */}
@@ -824,7 +895,7 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
           </mesh>
 
           {/* Inner Pulsing Radar Range Ring (Local Interstellar Boundary) */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} scale={[pulseScale, pulseScale, pulseScale]}>
+          <mesh ref={innerRingRef} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[1.8, 2.2, 32]} />
             <meshBasicMaterial
               color="#FFD60A"
@@ -836,7 +907,7 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
           </mesh>
 
           {/* Outer Pulsing Radar Range Ring (Oort Cloud Envelope) */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} scale={[pulseScale * 1.4, pulseScale * 1.4, pulseScale * 1.4]}>
+          <mesh ref={outerRingRef} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[3.2, 3.5, 32]} />
             <meshBasicMaterial
               color="#00F5D4"

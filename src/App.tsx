@@ -15,6 +15,8 @@ import { Omnibar } from './components/ui/Omnibar';
 import { CELESTIAL_BODIES, CELESTIAL_ORDER, CelestialBodyData, MoonData } from './data/astronomy';
 import { ScaleMode } from './utils/astronomicalUnits';
 import { soundEngine } from './utils/soundEngine';
+import { detectDeviceCapabilities, GRAPHICS_PRESETS } from './utils/deviceCapabilities';
+import { useSimulationStore } from './state/useSimulationStore';
 
 export function App() {
   // Navigation & Scale States
@@ -43,6 +45,20 @@ export function App() {
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [isOmnibarOpen, setIsOmnibarOpen] = useState<boolean>(false);
   const [cameraResetToken, setCameraResetToken] = useState<number>(0);
+  const [webglContextLost, setWebglContextLost] = useState<boolean>(false);
+
+  // Active graphics LOD configuration
+  const activeLOD = useSimulationStore((state) => state.activeLOD);
+  const currentPreset = GRAPHICS_PRESETS[activeLOD || 'HIGH'] || GRAPHICS_PRESETS.HIGH;
+
+  // Auto-detect hardware performance tier on initial load
+  useEffect(() => {
+    const profile = detectDeviceCapabilities();
+    const currentLod = useSimulationStore.getState().activeLOD;
+    if (!currentLod) {
+      useSimulationStore.getState().setActiveLOD(profile.recommendedQuality);
+    }
+  }, []);
 
   // Canvas Reference for Screenshots
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -258,8 +274,9 @@ export function App() {
     <div className="relative w-screen h-screen bg-[#020208] text-white overflow-hidden select-none font-body">
       {/* 1. 3D WebGL Canvas Layer */}
       <Canvas
+        dpr={[1, currentPreset.maxDpr]}
         gl={{
-          antialias: true,
+          antialias: activeLOD !== 'LOW',
           logarithmicDepthBuffer: true,
           powerPreference: 'high-performance',
           toneMapping: THREE.ACESFilmicToneMapping,
@@ -274,6 +291,16 @@ export function App() {
         }}
         onCreated={({ gl }) => {
           canvasRef.current = gl.domElement;
+          const canvas = gl.domElement;
+          canvas.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault();
+            console.warn('[WebGL] Context lost. Attempting recovery...');
+            setWebglContextLost(true);
+          });
+          canvas.addEventListener('webglcontextrestored', () => {
+            console.info('[WebGL] Context restored.');
+            setWebglContextLost(false);
+          });
         }}
         className="w-full h-full cursor-grab active:cursor-grabbing"
       >
@@ -430,6 +457,17 @@ export function App() {
         }}
         onSelectGalaxy={handleReturnToGalaxy}
       />
+
+      {/* 10. WebGL GPU Context Loss Recovery Banner */}
+      {webglContextLost && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md">
+          <div className="p-6 rounded-2xl bg-space-950 border border-amber-500/50 text-center font-tech shadow-2xl">
+            <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping inline-block mb-3" />
+            <h3 className="text-lg font-bold text-amber-300">GPU CONTEXT RECOVERY IN PROGRESS</h3>
+            <p className="text-xs text-gray-400 mt-1 font-mono">Restoring WebGL pipeline buffers and texture shaders...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,11 +14,13 @@ import {
   Grid,
   Radio,
   Zap,
-  Send
+  Send,
+  Cpu
 } from 'lucide-react';
 import { ScaleMode } from '../../utils/astronomicalUnits';
 import { soundEngine } from '../../utils/soundEngine';
 import { useSimulationStore } from '../../state/useSimulationStore';
+import { GraphicsQuality } from '../../utils/deviceCapabilities';
 
 interface LeftNavToolsProps {
   scaleMode: ScaleMode;
@@ -104,6 +106,28 @@ export const LeftNavTools: React.FC<LeftNavToolsProps> = ({
           <Scale className="w-4 h-4" />
           <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-space-900 border border-white/15 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity shadow-lg">
             Scale Mode: {scaleMode === 'enhanced' ? 'Enhanced Visibility' : '1:1 True Physical Scale'}
+          </span>
+        </button>
+
+        {/* 2b. Graphics Performance Preset (High / Medium / Low) */}
+        <button
+          onClick={() => {
+            soundEngine.playUiClick();
+            const nextLOD: Record<GraphicsQuality, GraphicsQuality> = {
+              HIGH: 'MEDIUM',
+              MEDIUM: 'LOW',
+              LOW: 'HIGH'
+            };
+            const current = (useSimulationStore.getState().activeLOD || 'HIGH') as GraphicsQuality;
+            useSimulationStore.getState().setActiveLOD(nextLOD[current]);
+          }}
+          onMouseEnter={() => soundEngine.playUiHover()}
+          className="group relative p-2.5 rounded-xl hover:bg-white/10 text-gray-400 hover:text-emerald-300 transition-all"
+          title="Toggle Graphics Performance Quality (High / Medium / Low)"
+        >
+          <Cpu className="w-4 h-4" />
+          <span className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-space-900 border border-white/15 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap transition-opacity shadow-lg">
+            Graphics: {useSimulationStore((state) => state.activeLOD || 'HIGH')} Quality
           </span>
         </button>
 

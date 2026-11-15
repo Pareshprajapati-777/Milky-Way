@@ -1,6 +1,9 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { createSeededRandom } from '../../utils/seededRandom';
+import { useSimulationStore } from '../../state/useSimulationStore';
+import { GRAPHICS_PRESETS } from '../../utils/deviceCapabilities';
 
 interface WarpTunnelProps {
   active: boolean;
@@ -14,10 +17,13 @@ interface WarpTunnelProps {
  */
 export const WarpTunnel: React.FC<WarpTunnelProps> = ({ active, progress }) => {
   const pointsRef = useRef<THREE.Points>(null);
+  const activeLOD = useSimulationStore((state) => state.activeLOD);
+  const preset = GRAPHICS_PRESETS[activeLOD || 'HIGH'] || GRAPHICS_PRESETS.HIGH;
 
-  // 3,000 GPU Streaking Interstellar Particles
+  // Adaptive GPU Streaking Interstellar Particles (3,000 at High)
   const { positions, colors, speeds, lengths } = useMemo(() => {
-    const count = 3000;
+    const count = Math.round(3000 * preset.particleMultiplier);
+    const rng = createSeededRandom(0x57617270); // Seed 'Warp'
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
     const speeds = new Float32Array(count);
@@ -31,15 +37,15 @@ export const WarpTunnel: React.FC<WarpTunnelProps> = ({ active, progress }) => {
     for (let i = 0; i < count; i++) {
       const i3 = i * 3;
       // Cylinder distribution along flight corridor
-      const radius = 1.5 + Math.pow(Math.random(), 1.5) * 55;
-      const angle = Math.random() * Math.PI * 2;
-      const z = (Math.random() - 0.5) * 800;
+      const radius = 1.5 + Math.pow(rng(), 1.5) * 55;
+      const angle = rng() * Math.PI * 2;
+      const z = (rng() - 0.5) * 800;
 
       positions[i3] = Math.cos(angle) * radius;
       positions[i3 + 1] = Math.sin(angle) * radius;
       positions[i3 + 2] = z;
 
-      const randColor = Math.random();
+      const randColor = rng();
       const col =
         randColor < 0.38
           ? cyan
@@ -53,12 +59,12 @@ export const WarpTunnel: React.FC<WarpTunnelProps> = ({ active, progress }) => {
       colors[i3 + 1] = col.g;
       colors[i3 + 2] = col.b;
 
-      speeds[i] = 400 + Math.random() * 600;
-      lengths[i] = 1.5 + Math.random() * 3.5;
+      speeds[i] = 400 + rng() * 600;
+      lengths[i] = 1.5 + rng() * 3.5;
     }
 
     return { positions, colors, speeds, lengths };
-  }, []);
+  }, [preset.particleMultiplier]);
 
   useFrame((_, delta) => {
     if (!active || !pointsRef.current) return;

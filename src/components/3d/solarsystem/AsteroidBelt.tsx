@@ -1,6 +1,9 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { createSeededRandom } from '../../../utils/seededRandom';
+import { useSimulationStore } from '../../../state/useSimulationStore';
+import { GRAPHICS_PRESETS } from '../../../utils/deviceCapabilities';
 
 interface AsteroidBeltProps {
   innerRadius?: number;
@@ -19,19 +22,24 @@ export const AsteroidBelt: React.FC<AsteroidBeltProps> = ({
 }) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const activeLOD = useSimulationStore((state) => state.activeLOD);
+  const preset = GRAPHICS_PRESETS[activeLOD || 'HIGH'] || GRAPHICS_PRESETS.HIGH;
 
-  // Compute initial random orbital parameters for each asteroid
+  const effectiveCount = Math.max(100, Math.round(count * preset.asteroidCountMultiplier));
+
+  // Compute deterministic seeded orbital parameters for each asteroid
   const asteroids = useMemo(() => {
     const list = [];
-    for (let i = 0; i < count; i++) {
-      const radius = innerRadius + Math.random() * (outerRadius - innerRadius);
-      const angle = Math.random() * Math.PI * 2;
-      const speed = (0.55 / Math.sqrt(radius / 100)) * (0.85 + Math.random() * 0.3);
-      const height = (Math.random() - 0.5) * 5.5;
-      const scale = 0.3 + Math.random() * 0.7;
-      const rotSpeedX = (Math.random() - 0.5) * 2.0;
-      const rotSpeedY = (Math.random() - 0.5) * 2.0;
-      const rotSpeedZ = (Math.random() - 0.5) * 2.0;
+    const rng = createSeededRandom(0x41737465); // Seed 'Aste'
+    for (let i = 0; i < effectiveCount; i++) {
+      const radius = innerRadius + rng() * (outerRadius - innerRadius);
+      const angle = rng() * Math.PI * 2;
+      const speed = (0.55 / Math.sqrt(radius / 100)) * (0.85 + rng() * 0.3);
+      const height = (rng() - 0.5) * 5.5;
+      const scale = 0.3 + rng() * 0.7;
+      const rotSpeedX = (rng() - 0.5) * 2.0;
+      const rotSpeedY = (rng() - 0.5) * 2.0;
+      const rotSpeedZ = (rng() - 0.5) * 2.0;
 
       list.push({
         radius,
@@ -39,16 +47,16 @@ export const AsteroidBelt: React.FC<AsteroidBeltProps> = ({
         speed,
         height,
         scale,
-        rotX: Math.random() * Math.PI,
-        rotY: Math.random() * Math.PI,
-        rotZ: Math.random() * Math.PI,
+        rotX: rng() * Math.PI,
+        rotY: rng() * Math.PI,
+        rotZ: rng() * Math.PI,
         rotSpeedX,
         rotSpeedY,
         rotSpeedZ
       });
     }
     return list;
-  }, [innerRadius, outerRadius, count]);
+  }, [innerRadius, outerRadius, effectiveCount]);
 
   useFrame((_, delta) => {
     if (!visible || !meshRef.current) return;
@@ -81,7 +89,7 @@ export const AsteroidBelt: React.FC<AsteroidBeltProps> = ({
   return (
     <instancedMesh
       ref={meshRef}
-      args={[undefined, undefined, count]}
+      args={[undefined, undefined, effectiveCount]}
       castShadow
       receiveShadow
     >
