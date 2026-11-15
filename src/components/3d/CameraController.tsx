@@ -55,6 +55,8 @@ export const CameraController: React.FC<CameraControllerProps> = ({
   const warpProgress = useRef<number>(0);
   const transitionStartCamPos = useRef<THREE.Vector3>(new THREE.Vector3());
   const transitionStartLookAt = useRef<THREE.Vector3>(new THREE.Vector3());
+  const prevViewModeRef = useRef<ViewMode>(viewMode);
+  const lastReportedProgress = useRef<number>(-1);
 
   // Non-blocking smooth glide tracking
   const isTransitioning = useRef<boolean>(false);
@@ -70,6 +72,10 @@ export const CameraController: React.FC<CameraControllerProps> = ({
 
     const isWarping = viewMode === 'warp_to_solar' || viewMode === 'warp_to_galaxy';
     controlsRef.current.enabled = !isWarping;
+
+    const cameFromWarpToSolar = prevViewModeRef.current === 'warp_to_solar';
+    const cameFromWarpToGalaxy = prevViewModeRef.current === 'warp_to_galaxy';
+    prevViewModeRef.current = viewMode;
 
     transitionStartCamPos.current.copy(camera.position);
     transitionStartLookAt.current.copy(controlsRef.current.target);
@@ -90,29 +96,53 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       controlsRef.current.zoomSpeed = 1.0;
       controlsRef.current.panSpeed = 0.7;
 
-      isTransitioning.current = true;
-      transitionDuration.current = 1.2;
+      if (!cameFromWarpToGalaxy) {
+        isTransitioning.current = true;
+        transitionDuration.current = 1.2;
+      } else {
+        isTransitioning.current = false;
+      }
     } else if (viewMode === 'warp_to_solar') {
       // 2. INTERSTELLAR FLIGHT PROFILE
       warpProgress.current = 0;
+      lastReportedProgress.current = -1;
       if (onTransitionProgress) onTransitionProgress(0);
 
       perspCamera.near = 0.5;
       perspCamera.far = 10000;
+      perspCamera.fov = 46;
       perspCamera.updateProjectionMatrix();
 
-      targetCamPos.current.set(0, 480, 750);
-      targetLookAt.current.set(0, 0, 0);
+      if (selectedBody) {
+        const effectiveRadius =
+          scaleMode === 'true_scale'
+            ? Math.max(0.4, selectedBody.radiusKm / ASTRO_CONSTANTS.EARTH_RADIUS_KM)
+            : selectedBody.visualRadius;
+        const pPos = getPlanet3DPosition(selectedBody, currentTime, scaleMode);
+        const dist = effectiveRadius * 3.2 + 4.0;
+        targetLookAt.current.copy(pPos);
+        targetCamPos.current.set(
+          pPos.x + dist * 0.72,
+          pPos.y + dist * 0.32,
+          pPos.z + dist * 0.72
+        );
+      } else {
+        targetCamPos.current.set(0, 480, 750);
+        targetLookAt.current.set(0, 0, 0);
+      }
+
       controlsRef.current.minDistance = scaleMode === 'true_scale' ? 140 : 48;
       controlsRef.current.maxDistance = 6500;
 
       isTransitioning.current = false;
     } else if (viewMode === 'warp_to_galaxy') {
       warpProgress.current = 0;
+      lastReportedProgress.current = -1;
       if (onTransitionProgress) onTransitionProgress(0);
 
       perspCamera.near = 0.2;
       perspCamera.far = 4000;
+      perspCamera.fov = 46;
       perspCamera.updateProjectionMatrix();
 
       targetCamPos.current.set(0, 28, 86);
@@ -125,6 +155,7 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       // 3. SOLAR SYSTEM PROFILE
       perspCamera.near = 1.0;
       perspCamera.far = 10000;
+      perspCamera.fov = 46;
       perspCamera.updateProjectionMatrix();
 
       targetCamPos.current.set(0, 480, 750);
@@ -134,8 +165,12 @@ export const CameraController: React.FC<CameraControllerProps> = ({
       controlsRef.current.rotateSpeed = 0.8;
       controlsRef.current.zoomSpeed = 1.2;
 
-      isTransitioning.current = true;
-      transitionDuration.current = 1.0;
+      if (!cameFromWarpToSolar) {
+        isTransitioning.current = true;
+        transitionDuration.current = 1.0;
+      } else {
+        isTransitioning.current = false;
+      }
     } else if (viewMode === 'planet' && selectedBody) {
       // 4. PLANETARY PROFILE
       perspCamera.near = 0.05;
@@ -211,69 +246,56 @@ export const CameraController: React.FC<CameraControllerProps> = ({
 
     // 1. Cinematic Interstellar Space Flight Transition
     if (viewMode === 'warp_to_solar' || viewMode === 'warp_to_galaxy') {
-      // 3.5-second cinematic flight timeline
-      warpProgress.current += delta * 0.32;
+      warpProgress.current += delta * 0.35;
       const t = Math.min(1.0, warpProgress.current);
 
-      if (onTransitionProgress) {
-        onTransitionProgress(t);
+      const pThrottled = Math.round(t * 100) / 100;
+      if (onTransitionProgress && pThrottled !== lastReportedProgress.current) {
+        lastReportedProgress.current = pThrottled;
+        onTransitionProgress(pThrottled);
       }
 
-      // Smooth Quintic easing (smoothstep with zero 1st & 2nd derivatives)
-      // s(t) = 6t^5 - 15t^4 + 10t^3
-      const ease = t * t * t * (t * (t * 6 - 15) + 10);
-
-      // Continuous Exponential Scale Zoom (FOV + Scale Interpolation)
-      const perspCamera = camera as THREE.PerspectiveCamera;
-      const fovPulse = Math.sin(t * Math.PI);
-      perspCamera.fov = THREE.MathUtils.lerp(46, 62, fovPulse);
-      perspCamera.updateProjectionMatrix();
-
       const [sunX, sunY, sunZ] = MILKY_WAY_DATA.sunPosition.position3D;
-      const solarSystemApproach = new THREE.Vector3(sunX, sunY + 2.5, sunZ);
+      const sunPosGalaxy = new THREE.Vector3(sunX, sunY, sunZ);
+      const pSunArrival = new THREE.Vector3(sunX + 1.2, sunY + 0.6, sunZ + 2.0);
 
       if (viewMode === 'warp_to_solar') {
-        // 3D Hermite trajectory: starts at Galactic view, swoops in towards Orion Spur,
-        // then gracefully transitions into Solar System overview
-        const p0 = transitionStartCamPos.current;
-        const pMid = new THREE.Vector3(sunX * 0.85, sunY + 12, sunZ * 0.85);
-        const pFinal = targetCamPos.current;
-
-        // Quadratic/Cubic Bezier curve
-        const inv = 1 - ease;
-        const currentPos = new THREE.Vector3(
-          inv * inv * p0.x + 2 * inv * ease * pMid.x + ease * ease * pFinal.x,
-          inv * inv * p0.y + 2 * inv * ease * pMid.y + ease * ease * pFinal.y,
-          inv * inv * p0.z + 2 * inv * ease * pMid.z + ease * ease * pFinal.z
-        );
-
-        camera.position.copy(currentPos);
-
-        // LookAt shifts from Galactic Center towards Solar System origin
-        const currentLookAt = new THREE.Vector3().lerpVectors(
-          solarSystemApproach,
-          targetLookAt.current,
-          Math.max(0, (ease - 0.5) * 2)
-        );
-        controlsRef.current.target.copy(currentLookAt);
+        if (t < 0.48) {
+          // Phase 1: Galactic Dive — swooping smoothly from Galaxy view into the Sun in Orion Spur
+          const s1 = t / 0.48;
+          const ease1 = s1 * s1 * (3 - 2 * s1); // Smoothstep
+          camera.position.lerpVectors(transitionStartCamPos.current, pSunArrival, ease1);
+          controlsRef.current.target.lerpVectors(transitionStartLookAt.current, sunPosGalaxy, ease1);
+        } else {
+          // Phase 2: Solar System Arrival — emerging near the Sun and smoothly gliding into position
+          const s2 = (t - 0.48) / 0.52;
+          const ease2 = s2 * s2 * (3 - 2 * s2); // Smoothstep
+          const pSolarStart = new THREE.Vector3(0, 42, 68);
+          camera.position.lerpVectors(pSolarStart, targetCamPos.current, ease2);
+          controlsRef.current.target.lerpVectors(new THREE.Vector3(0, 0, 0), targetLookAt.current, ease2);
+        }
       } else {
-        // Return journey: zooms outward from Solar System back to Galactic panorama
-        camera.position.lerpVectors(
-          transitionStartCamPos.current,
-          targetCamPos.current,
-          ease
-        );
-        controlsRef.current.target.lerpVectors(
-          transitionStartLookAt.current,
-          targetLookAt.current,
-          ease
-        );
+        if (t < 0.48) {
+          // Phase 1: Leaving Solar System — diving towards the Sun into the warp corridor
+          const s1 = t / 0.48;
+          const ease1 = s1 * s1 * (3 - 2 * s1);
+          const pSolarExit = new THREE.Vector3(0, 35, 55);
+          camera.position.lerpVectors(transitionStartCamPos.current, pSolarExit, ease1);
+          controlsRef.current.target.lerpVectors(transitionStartLookAt.current, new THREE.Vector3(0, 0, 0), ease1);
+        } else {
+          // Phase 2: Emerging into Milky Way Galaxy — expanding outwards to panoramic galactic view
+          const s2 = (t - 0.48) / 0.52;
+          const ease2 = s2 * s2 * (3 - 2 * s2);
+          camera.position.lerpVectors(pSunArrival, targetCamPos.current, ease2);
+          controlsRef.current.target.lerpVectors(sunPosGalaxy, targetLookAt.current, ease2);
+        }
       }
 
       if (t >= 1.0) {
-        perspCamera.fov = 46;
-        perspCamera.updateProjectionMatrix();
-        setViewMode(viewMode === 'warp_to_solar' ? 'solar' : 'galaxy');
+        camera.position.copy(targetCamPos.current);
+        controlsRef.current.target.copy(targetLookAt.current);
+        controlsRef.current.update();
+        isTransitioning.current = false;
         onWarpComplete();
       }
       controlsRef.current.update();

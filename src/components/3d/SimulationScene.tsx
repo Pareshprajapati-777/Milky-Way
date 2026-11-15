@@ -170,13 +170,39 @@ export const SimulationScene: React.FC<SimulationSceneProps> = ({
     galaxyOpacity = 1.0;
     solarScale = 0.0;
   } else if (viewMode === 'warp_to_solar') {
-    // Exponential ease out: galaxy fades as user zooms in deep
-    galaxyOpacity = Math.max(0.0, 1.0 - Math.pow(transitionProgress, 1.5));
-    // Solar system expands exponentially from micro-point to full size
-    solarScale = Math.min(1.0, Math.pow(transitionProgress, 2.0));
+    // Phase 1 (0.0 -> 0.38): Galaxy is fully visible as camera dives into Orion Spur
+    // Mid-Flight (0.38 -> 0.52): Galaxy fades out cleanly behind warp tunnel
+    // Phase 2 (0.52 -> 1.0): Galaxy is hidden
+    if (transitionProgress < 0.38) {
+      galaxyOpacity = 1.0;
+    } else if (transitionProgress < 0.52) {
+      galaxyOpacity = Math.max(0.0, 1.0 - (transitionProgress - 0.38) / 0.14);
+    } else {
+      galaxyOpacity = 0.0;
+    }
+
+    // Solar system emerges at 0.48 as camera emerges from the warp corridor
+    if (transitionProgress < 0.48) {
+      solarScale = 0.0;
+    } else {
+      solarScale = 1.0;
+    }
   } else if (viewMode === 'warp_to_galaxy') {
-    galaxyOpacity = Math.min(1.0, Math.pow(transitionProgress, 0.7));
-    solarScale = Math.max(0.0, 1.0 - Math.pow(transitionProgress, 1.8));
+    // Solar system visible until warp corridor engages
+    if (transitionProgress < 0.48) {
+      solarScale = 1.0;
+    } else {
+      solarScale = 0.0;
+    }
+
+    // Galaxy fades in between 0.46 and 0.60
+    if (transitionProgress < 0.46) {
+      galaxyOpacity = 0.0;
+    } else if (transitionProgress < 0.60) {
+      galaxyOpacity = Math.min(1.0, (transitionProgress - 0.46) / 0.14);
+    } else {
+      galaxyOpacity = 1.0;
+    }
   } else {
     galaxyOpacity = 0.0;
     solarScale = 1.0;

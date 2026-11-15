@@ -788,7 +788,7 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
   return (
     <group>
       {/* Background Stars on Celestial Sphere */}
-      <primitive object={new THREE.Points(backgroundStarsGeometry, backgroundStarsMaterial)} />
+      <points geometry={backgroundStarsGeometry} material={backgroundStarsMaterial} />
 
       {/* Main Galactic Body tilted with exact angles from milky_way.html: x=8deg, z=-6deg */}
       <group
@@ -801,21 +801,21 @@ export const MilkyWayGalaxy: React.FC<MilkyWayGalaxyProps> = ({
         ]}
       >
         {/* 1. Main Galaxy Stars */}
-        <primitive object={new THREE.Points(starsGeometry, galaxyStarMaterial)} />
+        <points geometry={starsGeometry} material={galaxyStarMaterial} />
 
         {/* 2. Central Elongated Bar Stars (rotated 8 deg around Z) */}
         <group rotation={[0, 0, THREE.MathUtils.degToRad(8)]}>
-          <primitive object={new THREE.Points(barGeometry, barMaterial)} />
+          <points geometry={barGeometry} material={barMaterial} />
         </group>
 
         {/* 3. Star Formation H II Regions */}
-        <primitive object={new THREE.Points(starFormationGeometry, starFormationMaterial)} />
+        <points geometry={starFormationGeometry} material={starFormationMaterial} />
 
         {/* 4. Interstellar Dark Dust Lanes */}
-        <primitive object={new THREE.Points(dustGeometry, dustMaterial)} />
+        <points geometry={dustGeometry} material={dustMaterial} />
 
         {/* 5. Volumetric Nebula Clouds */}
-        <primitive object={new THREE.Points(nebulaGeometry, nebulaMaterial)} />
+        <points geometry={nebulaGeometry} material={nebulaMaterial} />
 
         {/* 6. Central Galactic Bulge (Double Layer Squashed Spheroids + Point Light) */}
         <group>
